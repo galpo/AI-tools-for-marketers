@@ -9,7 +9,6 @@ interface CategoryFilterProps {
 export const categoryIcons: { [key: string]: LucideIcon } = {
   'All': Layers,
   'Video AI': Video,
-  'Podcasting': Mic,
   'Webinars': PresentationScreen,
   'Advertising': Megaphone,
   'Analytics': BarChart2,
