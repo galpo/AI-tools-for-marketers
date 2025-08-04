@@ -32,15 +32,6 @@ export const tools: Tool[] = [
     icon: Video
   },
   {
-    category: "Podcasting",
-    vendor: "Google Notebook LM",
-    vendorUrl: "https://notebooklm.google/",
-    description: "Best for text to podcast. It can generate fun 10-minute podcast episodes. Although in practice, I don't use it too much beyond entertainment.",
-    rating: 3,
-    icon: Mic,
-    id: "google-notebook-lm"
-  },
-  {
     category: "Webinars",
     vendor: "Opus",
     vendorUrl: "https://www.opus.pro/",
