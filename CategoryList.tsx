@@ -1,12 +1,10 @@
 import React from 'react'
 import { TypeIcon as type, LucideIcon } from 'lucide-react'
 import { categoryIcons } from './CategoryFilter'
-
 interface CategoryListProps {
   categories: string[]
   onCategoryClick: (category: string) => void
 }
-
 export default function CategoryList({ categories, onCategoryClick }: CategoryListProps) {
   return (
     <div className="mb-6">
