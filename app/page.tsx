@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Chatbot } from "@/components/chatbot"
 import {
   Search,
   Users,
@@ -53,6 +52,7 @@ function AITools() {
   const [categories, setCategories] = useState<string[]>(["All"])
   const [currentPage, setCurrentPage] = useState(0)
   const [toolsPerPage] = useState(6)
+  const [favorites, setFavorites] = useState<string[]>([])
 
   useEffect(() => {
     fetchTools()
@@ -277,6 +277,12 @@ function AITools() {
     }
   }
 
+  const toggleFavorite = (toolName: string) => {
+    setFavorites((prev) => (prev.includes(toolName) ? prev.filter((name) => name !== toolName) : [...prev, toolName]))
+  }
+
+  const isFavorite = (toolName: string) => favorites.includes(toolName)
+
   const totalPages = Math.ceil(filteredTools.length / toolsPerPage)
   const startIndex = currentPage * toolsPerPage
   const endIndex = startIndex + toolsPerPage
@@ -375,6 +381,78 @@ function AITools() {
           </div>
         </div>
 
+        {/* Favorites Section */}
+        {favorites.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Your Favorite Tools</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tools
+                .filter((tool) => favorites.includes(tool["Key Tool"]))
+                .slice(0, 6)
+                .map((tool, index) => {
+                  const category = getToolCategory(tool["Use Case"])
+                  return (
+                    <Card
+                      key={`favorite-${index}`}
+                      className="bg-white border border-red-200 hover:shadow-md transition-shadow duration-200"
+                    >
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-gray-900">{tool["Key Tool"]}</h3>
+                            <a
+                              href={generateWebsiteUrl(tool["Key Tool"])}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700 transition-colors"
+                              title={`Visit ${tool["Key Tool"]} website`}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleFavorite(tool["Key Tool"])}
+                              className="p-1 rounded-full text-red-500 hover:text-red-600 transition-colors"
+                              title="Remove from favorites"
+                            >
+                              <Star className="h-4 w-4 fill-current" />
+                            </button>
+                            <Badge className={`${getCategoryColor(category)} text-xs font-medium px-2 py-1`}>
+                              {category}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-sm font-medium text-blue-600 mb-3">{tool["Use Case"]}</p>
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-3">{tool["Comments"]}</p>
+                        {tool["Pricing"] && (
+                          <div className="mb-3">
+                            <span className="text-sm font-medium text-green-600">{tool["Pricing"]}</span>
+                          </div>
+                        )}
+                        {tool["Ranking/Insight"] && (
+                          <div className="flex items-start gap-1 mb-4">
+                            <Star className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-xs text-gray-500">{tool["Ranking/Insight"]}</span>
+                          </div>
+                        )}
+                        <a
+                          href={generateWebsiteUrl(tool["Key Tool"])}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                        >
+                          Visit Website
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </Card>
+                  )
+                })}
+            </div>
+          </div>
+        )}
+
         {/* Tools Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {currentTools.map((tool, index) => {
@@ -399,7 +477,22 @@ function AITools() {
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     </div>
-                    <Badge className={`${getCategoryColor(category)} text-xs font-medium px-2 py-1`}>{category}</Badge>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleFavorite(tool["Key Tool"])}
+                        className={`p-1 rounded-full transition-colors ${
+                          isFavorite(tool["Key Tool"])
+                            ? "text-red-500 hover:text-red-600"
+                            : "text-gray-400 hover:text-red-500"
+                        }`}
+                        title={isFavorite(tool["Key Tool"]) ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star className={`h-4 w-4 ${isFavorite(tool["Key Tool"]) ? "fill-current" : ""}`} />
+                      </button>
+                      <Badge className={`${getCategoryColor(category)} text-xs font-medium px-2 py-1`}>
+                        {category}
+                      </Badge>
+                    </div>
                   </div>
 
                   {/* Use case */}
@@ -479,9 +572,6 @@ function AITools() {
             <p>No tools found matching your criteria.</p>
           </div>
         )}
-
-        {/* Chatbot Component */}
-        <Chatbot tools={tools} />
       </div>
     </div>
   )
