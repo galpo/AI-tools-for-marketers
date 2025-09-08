@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Chatbot } from "@/components/chatbot"
 import {
   Search,
   Users,
@@ -572,6 +573,9 @@ function AITools() {
             <p>No tools found matching your criteria.</p>
           </div>
         )}
+
+        {/* Chatbot Component */}
+        <Chatbot tools={tools} />
       </div>
     </div>
   )
