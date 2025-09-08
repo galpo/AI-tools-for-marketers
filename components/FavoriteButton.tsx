@@ -24,4 +24,3 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({ isFavorite, onClick }) 
 };
 
 export default FavoriteButton;
-

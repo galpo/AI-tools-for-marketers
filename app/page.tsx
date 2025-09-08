@@ -1,274 +1,490 @@
-'use client'
+"use client"
 
-import { useState, useMemo } from 'react'
-import React from 'react';
-import { MagnifyingGlassIcon, PencilIcon, ChatBubbleBottomCenterTextIcon, PhotoIcon, VideoCameraIcon, StarIcon, BookmarkIcon, BuildingOffice2Icon, ChartBarIcon, CurrencyDollarIcon, ClipboardDocumentIcon, ChartBarSquareIcon } from '@heroicons/react/24/outline'
-import { StarIcon as SolidStarIcon } from '@heroicons/react/24/solid'
-import { Tool, Category, Review } from './types'
-import { toolsData } from './data'
-import FavoriteButton from '../components/FavoriteButton'
-import ReviewForm from '../components/ReviewForm'
+import { useState, useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Chatbot } from "@/components/chatbot"
+import {
+  Search,
+  Users,
+  Workflow,
+  Database,
+  PenTool,
+  BarChart,
+  Mail,
+  Wrench,
+  ExternalLink,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+} from "lucide-react"
 
-const categories: Category[] = [
-  { name: "All", icon: MagnifyingGlassIcon, color: "text-gray-500" },
-  { name: "Video AI", icon: VideoCameraIcon, color: "text-red-500" },
-  { name: "Podcasting", icon: ChatBubbleBottomCenterTextIcon, color: "text-purple-500" },
-  { name: "Advertising", icon: CurrencyDollarIcon, color: "text-green-500" },
-  { name: "Analytics", icon: ChartBarIcon, color: "text-blue-500" },
-  { name: "SEO", icon: ChartBarSquareIcon, color: "text-yellow-500" },
-  { name: "Content", icon: PencilIcon, color: "text-indigo-500" },
-  { name: "Social Media", icon: ChatBubbleBottomCenterTextIcon, color: "text-pink-500" },
-  { name: "Search", icon: MagnifyingGlassIcon, color: "text-orange-500" },
-  { name: "Integration", icon: StarIcon, color: "text-teal-500" },
-  { name: "Meeting Notes", icon: ClipboardDocumentIcon, color: "text-cyan-500" },
-  { name: "AI Chatbots", icon: ChatBubbleBottomCenterTextIcon, color: "text-rose-500" },
-  { name: "CRM", icon: BuildingOffice2Icon, color: "text-emerald-500" },
-]
+interface Tool {
+  "Key Tool": string
+  "Use Case": string
+  Comments: string
+  Pricing: string
+  "Ranking/Insight": string
+}
 
-export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortOption, setSortOption] = useState('alphabetical')
-  const [tools, setTools] = useState(toolsData)
-  const [favorites, setFavorites] = useState<string[]>([])
+const categoryConfig = {
+  All: { icon: Search, color: "bg-blue-500 hover:bg-blue-600" },
+  "Lead Builders": { icon: Users, color: "bg-green-500 hover:bg-green-600" },
+  "Workflow Systems": { icon: Workflow, color: "bg-purple-500 hover:bg-purple-600" },
+  "CRM & Customer": { icon: Database, color: "bg-orange-500 hover:bg-orange-600" },
+  "Content Creation": { icon: PenTool, color: "bg-pink-500 hover:bg-pink-600" },
+  "Analytics & Data": { icon: BarChart, color: "bg-indigo-500 hover:bg-indigo-600" },
+  "Email & Marketing": { icon: Mail, color: "bg-red-500 hover:bg-red-600" },
+  "Other Tools": { icon: Wrench, color: "bg-gray-500 hover:bg-gray-600" },
+}
 
-  const filteredAndSortedTools = useMemo(() => {
-    let filtered = tools.filter((tool) => {
-      const matchesSearch = 
-        tool.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tool.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (tool.description && tool.description.toLowerCase().includes(searchQuery.toLowerCase()))
-      const matchesCategory = selectedCategory === 'All' || tool.category === selectedCategory
-      return matchesSearch && matchesCategory
+function AITools() {
+  const [tools, setTools] = useState<Tool[]>([])
+  const [filteredTools, setFilteredTools] = useState<Tool[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilter, setActiveFilter] = useState("All")
+  const [priceFilter, setPriceFilter] = useState("All")
+  const [sortBy, setSortBy] = useState("name")
+  const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState<string[]>(["All"])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [toolsPerPage] = useState(6)
+
+  useEffect(() => {
+    fetchTools()
+  }, [])
+
+  useEffect(() => {
+    filterTools()
+  }, [tools, searchTerm, activeFilter, priceFilter, sortBy])
+
+  const fetchTools = async () => {
+    try {
+      const response = await fetch(
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Sales_Martech_Tools_Final-Kg6mfaAhksmmI8ajHD62RFt8bM8EXL.csv",
+      )
+      const csvText = await response.text()
+
+      const lines = csvText.trim().split("\n")
+      const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim())
+
+      const parsedTools: Tool[] = []
+      const useCases = new Set<string>()
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        if (values.length >= headers.length) {
+          const tool: any = {}
+          headers.forEach((header, index) => {
+            tool[header] = values[index] || ""
+          })
+          parsedTools.push(tool)
+          if (tool["Use Case"]) {
+            useCases.add(tool["Use Case"])
+          }
+        }
+      }
+
+      const detectedCategories = generateCategories(Array.from(useCases))
+      setCategories(["All", ...detectedCategories])
+      setTools(parsedTools)
+    } catch (error) {
+      console.error("Error fetching tools:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateCategories = (useCases: string[]): string[] => {
+    const categoryMap = new Map<string, number>()
+
+    useCases.forEach((useCase) => {
+      const lowerCase = useCase.toLowerCase()
+
+      if (lowerCase.includes("lead") || lowerCase.includes("prospecting")) {
+        categoryMap.set("Lead Builders", (categoryMap.get("Lead Builders") || 0) + 1)
+      } else if (lowerCase.includes("workflow") || lowerCase.includes("automation")) {
+        categoryMap.set("Workflow Systems", (categoryMap.get("Workflow Systems") || 0) + 1)
+      } else if (lowerCase.includes("crm") || lowerCase.includes("customer")) {
+        categoryMap.set("CRM & Customer", (categoryMap.get("CRM & Customer") || 0) + 1)
+      } else if (lowerCase.includes("content") || lowerCase.includes("writing")) {
+        categoryMap.set("Content Creation", (categoryMap.get("Content Creation") || 0) + 1)
+      } else if (lowerCase.includes("analytics") || lowerCase.includes("data")) {
+        categoryMap.set("Analytics & Data", (categoryMap.get("Analytics & Data") || 0) + 1)
+      } else if (lowerCase.includes("email") || lowerCase.includes("marketing")) {
+        categoryMap.set("Email & Marketing", (categoryMap.get("Email & Marketing") || 0) + 1)
+      } else {
+        categoryMap.set("Other Tools", (categoryMap.get("Other Tools") || 0) + 1)
+      }
     })
 
-    if (sortOption === 'alphabetical') {
-      filtered.sort((a, b) => a.vendor.localeCompare(b.vendor))
-    } else if (sortOption === 'category') {
-      filtered.sort((a, b) => a.category.localeCompare(b.category))
-    } else if (sortOption === 'rating') {
-      filtered.sort((a, b) => ((b.reviews?.average || 0) - (a.reviews?.average || 0)))
+    return Array.from(categoryMap.keys()).filter((category) => categoryMap.get(category)! > 0)
+  }
+
+  const generateWebsiteUrl = (toolName: string): string => {
+    const websiteMap: { [key: string]: string } = {
+      ChatGPT: "https://chat.openai.com",
+      Jasper: "https://www.jasper.ai",
+      "Copy.ai": "https://www.copy.ai",
+      Grammarly: "https://www.grammarly.com",
+      Canva: "https://www.canva.com",
+      Notion: "https://www.notion.so",
+      Slack: "https://slack.com",
+      HubSpot: "https://www.hubspot.com",
+      Salesforce: "https://www.salesforce.com",
+      Mailchimp: "https://mailchimp.com",
+      Zapier: "https://zapier.com",
+      Airtable: "https://airtable.com",
+      ScaleStack: "https://www.scalestack.com",
+      Apollo: "https://www.apollo.io",
+      Outreach: "https://www.outreach.io",
+      Clearbit: "https://clearbit.com",
+      "Common Room": "https://www.commonroom.io",
+      Freckle: "https://freckle.com",
+      Lusha: "https://www.lusha.com",
     }
 
-    return filtered
-  }, [searchQuery, selectedCategory, sortOption, tools])
+    const directMatch = websiteMap[toolName]
+    if (directMatch) return directMatch
 
-  const favoriteTools = useMemo(() => {
-    return tools.filter(tool => favorites.includes(tool.vendor))
-  }, [favorites, tools])
+    for (const [key, url] of Object.entries(websiteMap)) {
+      if (toolName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(toolName.toLowerCase())) {
+        return url
+      }
+    }
 
-  const recommendedTools = useMemo(() => {
-    const favoriteCategories = favoriteTools.map(tool => tool.category)
-    return tools.filter(tool => 
-      favoriteCategories.includes(tool.category) && !favorites.includes(tool.vendor)
-    ).slice(0, 3)
-  }, [favoriteTools, tools, favorites])
+    const cleanName = toolName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .replace(/ai$|app$|tool$|software$/g, "")
 
-  const toggleFavorite = (vendor: string) => {
-    setFavorites(prevFavorites => 
-      prevFavorites.includes(vendor)
-        ? prevFavorites.filter(fav => fav !== vendor)
-        : [...prevFavorites, vendor]
+    return `https://www.${cleanName}.com`
+  }
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = []
+    let current = ""
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim())
+        current = ""
+      } else {
+        current += char
+      }
+    }
+
+    result.push(current.trim())
+    return result
+  }
+
+  const filterTools = () => {
+    let filtered = tools
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (tool) =>
+          tool["Key Tool"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+          tool["Use Case"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+          tool["Comments"].toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    if (activeFilter !== "All") {
+      filtered = filtered.filter((tool) => {
+        return getToolCategory(tool["Use Case"]) === activeFilter
+      })
+    }
+
+    if (priceFilter !== "All") {
+      filtered = filtered.filter((tool) => {
+        const pricing = tool["Pricing"].toLowerCase()
+        switch (priceFilter) {
+          case "Free":
+            return pricing.includes("free") || pricing.includes("$0")
+          case "Under $50":
+            return pricing.includes("$") && !pricing.includes("free") && extractPrice(pricing) < 50
+          case "$50-$200":
+            const price = extractPrice(pricing)
+            return price >= 50 && price <= 200
+          case "Over $200":
+            return extractPrice(pricing) > 200
+          default:
+            return true
+        }
+      })
+    }
+
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a["Key Tool"].localeCompare(b["Key Tool"])
+        case "price":
+          return extractPrice(a["Pricing"]) - extractPrice(b["Pricing"])
+        case "category":
+          return getToolCategory(a["Use Case"]).localeCompare(getToolCategory(b["Use Case"]))
+        default:
+          return 0
+      }
+    })
+
+    setFilteredTools(filtered)
+    setCurrentPage(0)
+  }
+
+  const extractPrice = (pricing: string): number => {
+    const match = pricing.match(/\$(\d+)/)
+    return match ? Number.parseInt(match[1]) : 0
+  }
+
+  const getToolCategory = (useCase: string): string => {
+    const lowerCase = useCase.toLowerCase()
+
+    if (lowerCase.includes("lead") || lowerCase.includes("prospecting")) return "Lead Builders"
+    if (lowerCase.includes("workflow") || lowerCase.includes("automation")) return "Workflow Systems"
+    if (lowerCase.includes("crm") || lowerCase.includes("customer")) return "CRM & Customer"
+    if (lowerCase.includes("content") || lowerCase.includes("writing")) return "Content Creation"
+    if (lowerCase.includes("analytics") || lowerCase.includes("data")) return "Analytics & Data"
+    if (lowerCase.includes("email") || lowerCase.includes("marketing")) return "Email & Marketing"
+    return "Other Tools"
+  }
+
+  const getCategoryColor = (category: string): string => {
+    switch (category) {
+      case "Lead Builders":
+        return "bg-green-100 text-green-800"
+      case "Workflow Systems":
+        return "bg-purple-100 text-purple-800"
+      case "CRM & Customer":
+        return "bg-orange-100 text-orange-800"
+      case "Content Creation":
+        return "bg-pink-100 text-pink-800"
+      case "Analytics & Data":
+        return "bg-blue-100 text-blue-800"
+      case "Email & Marketing":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const totalPages = Math.ceil(filteredTools.length / toolsPerPage)
+  const startIndex = currentPage * toolsPerPage
+  const endIndex = startIndex + toolsPerPage
+  const currentTools = filteredTools.slice(startIndex, endIndex)
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const goToPrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">Loading AI tools...</div>
+      </div>
     )
   }
 
-  const addReview = (vendor: string, rating: number, comment: string) => {
-  setTools(prevTools => 
-    prevTools.map(tool => {
-      if (tool.vendor === vendor) {
-        const userReviews = tool.userReviews || [];
-        const existingReviewIndex = userReviews.findIndex(
-          review => review.userId === 'current-user'
-        );
-        
-        let updatedUserReviews;
-        if (existingReviewIndex !== -1) {
-          // Update existing review
-          updatedUserReviews = [...userReviews];
-          updatedUserReviews[existingReviewIndex] = {
-            ...updatedUserReviews[existingReviewIndex],
-            rating,
-            comment,
-            createdAt: new Date().toISOString(),
-          };
-        } else {
-          // Add new review
-          const newReview: Review = {
-            id: Date.now().toString(),
-            userId: 'current-user',
-            rating,
-            comment,
-            createdAt: new Date().toISOString(),
-          };
-          updatedUserReviews = [...userReviews, newReview];
-        }
-        
-        const totalRatings = updatedUserReviews.reduce((sum, review) => sum + review.rating, 0);
-        const averageRating = totalRatings / updatedUserReviews.length;
-        return {
-          ...tool,
-          userReviews: updatedUserReviews,
-          reviews: {
-            count: updatedUserReviews.length,
-            average: averageRating,
-          },
-        };
-      }
-      return tool;
-    })
-  );
-};
-
-  const renderToolCard = (tool: Tool) => {
-    const category = categories.find(cat => cat.name === tool.category) || categories[0];
-
-    return (
-      <div
-        key={tool.vendor}
-        className="flex flex-col p-4 border rounded shadow hover:shadow-md transition duration-300"
-      >
-        <div className="flex justify-between items-start">
-          <h2 className="text-lg font-semibold">{tool.vendor}</h2>
-          <FavoriteButton 
-            isFavorite={favorites.includes(tool.vendor)}
-            onClick={() => toggleFavorite(tool.vendor)}
-          />
-        </div>
-        <p className="text-sm text-gray-600 flex items-center mt-1">
-          {React.createElement(category.icon, { className: `w-4 h-4 mr-1 ${category.color}` })}
-          {tool.category}
-          {tool.subCategory && ` - ${tool.subCategory}`}
-        </p>
-        {tool.link && (
-          <a href={tool.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm mt-2 block">
-            Visit Website
-          </a>
-        )}
-        {tool.description && (
-          <p className="text-sm text-gray-700 mt-2 line-clamp-4">{tool.description}</p>
-        )}
-        {tool.reviews && (
-          <div className="flex items-center mt-2">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <SolidStarIcon
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < Math.round(tool.reviews.average)
-                      ? 'text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-sm font-semibold ml-2">{tool.reviews.average.toFixed(1)}</span>
-            <span className="text-xs text-gray-500 ml-1">({tool.reviews.count} reviews)</span>
-          </div>
-        )}
-        {tool.pricing && (
-          <div className="mt-2">
-            <h3 className="text-sm font-semibold">Pricing:</h3>
-            <ul className="text-xs text-gray-600 mt-1">
-              {tool.pricing.map((tier, index) => (
-                <li key={index} className="flex items-center">
-                  <span className={`w-2 h-2 rounded-full mr-2 ${
-                    tier.tier === 'Free' ? 'bg-green-500' :
-                    tier.tier === 'Paid' ? 'bg-blue-500' :
-                    'bg-purple-500'
-                  }`}></span>
-                  <span>{tier.tier}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold mb-2">Your Review</h3>
-          <ReviewForm onSubmit={(rating, comment) => addReview(tool.vendor, rating, comment)} />
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="bg-white rounded shadow p-6">
-        <h1 className="text-3xl font-bold mb-8 text-center text-white bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-lg shadow-lg">
-          AI Tools for Marketers
-        </h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">AI Tools for Marketers</h1>
 
-        <div className="flex flex-col md:flex-row justify-start items-center mb-6 gap-4">
-          <div className="relative w-full md:w-64 transition-all duration-300 focus-within:w-full md:mr-4">
-            <input
-              type="text"
-              placeholder="Search tools..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full p-3 border rounded mb-4 md:mb-0 shadow-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+        {/* Filter Tools Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Filter className="h-5 w-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Filter Tools</h2>
           </div>
 
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-            className="w-auto p-3 border rounded shadow-sm"
-          >
-            <option value="alphabetical">Sort Alphabetically</option>
-            <option value="category">Sort by Category</option>
-            <option value="rating">Sort by Rating</option>
-          </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <Input
+                type="search"
+                placeholder="Search tools..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <Select value={activeFilter} onValueChange={setActiveFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+              <Select value={priceFilter} onValueChange={setPriceFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Free" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Prices</SelectItem>
+                  <SelectItem value="Free">Free</SelectItem>
+                  <SelectItem value="Under $50">Under $50</SelectItem>
+                  <SelectItem value="$50-$200">$50 - $200</SelectItem>
+                  <SelectItem value="Over $200">Over $200</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Name" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="price">Price</SelectItem>
+                  <SelectItem value="category">Category</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto mb-6">
-          {categories.map(category => (
-            <button
-              key={category.name}
-              className={`flex items-center whitespace-nowrap p-2 rounded-full border shadow-sm transition-all duration-300 ${
-                selectedCategory === category.name
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white transform scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-              style={{
-                boxShadow: selectedCategory === category.name ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-              onClick={() => setSelectedCategory(category.name)}
-            >
-              <category.icon className={`w-4 h-4 mr-2 ${category.color}`} />
-              {category.name}
-            </button>
-          ))}
+        {/* Tools Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {currentTools.map((tool, index) => {
+            const category = getToolCategory(tool["Use Case"])
+            return (
+              <Card
+                key={startIndex + index}
+                className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="p-6">
+                  {/* Header with tool name and category */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900">{tool["Key Tool"]}</h3>
+                      <a
+                        href={generateWebsiteUrl(tool["Key Tool"])}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700 transition-colors"
+                        title={`Visit ${tool["Key Tool"]} website`}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                    <Badge className={`${getCategoryColor(category)} text-xs font-medium px-2 py-1`}>{category}</Badge>
+                  </div>
+
+                  {/* Use case */}
+                  <p className="text-sm font-medium text-blue-600 mb-3">{tool["Use Case"]}</p>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-3">{tool["Comments"]}</p>
+
+                  {/* Pricing */}
+                  {tool["Pricing"] && (
+                    <div className="mb-3">
+                      <span className="text-sm font-medium text-green-600">{tool["Pricing"]}</span>
+                    </div>
+                  )}
+
+                  {/* Rating/Insight */}
+                  {tool["Ranking/Insight"] && (
+                    <div className="flex items-start gap-1 mb-4">
+                      <Star className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-xs text-gray-500">{tool["Ranking/Insight"]}</span>
+                    </div>
+                  )}
+
+                  {/* Visit Website Link */}
+                  <a
+                    href={generateWebsiteUrl(tool["Key Tool"])}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                  >
+                    Visit Website
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </Card>
+            )
+          })}
         </div>
 
-        {favoriteTools.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Your Favorite Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {favoriteTools.map(renderToolCard)}
+        {/* Pagination Controls */}
+        {filteredTools.length > 0 && (
+          <div className="flex items-center justify-between bg-white p-4 rounded-lg border">
+            <div className="text-sm text-gray-600">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredTools.length)} of {filteredTools.length} tools
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={currentPage === 0}>
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    variant={currentPage === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(i)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+              </div>
+
+              <Button variant="outline" size="sm" onClick={goToNextPage} disabled={currentPage === totalPages - 1}>
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         )}
 
-        {recommendedTools.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Recommended for You</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recommendedTools.map(renderToolCard)}
-            </div>
+        {filteredTools.length === 0 && !loading && (
+          <div className="text-center text-gray-500 mt-8">
+            <p>No tools found matching your criteria.</p>
           </div>
         )}
 
-        <h2 className="text-2xl font-bold mb-4">All Tools</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAndSortedTools.map(renderToolCard)}
-        </div>
-
-        {filteredAndSortedTools.length === 0 && (
-          <div className="text-center text-gray-500">
-            <p>No tools available for this category and filters.</p>
-          </div>
-        )}
+        {/* Chatbot Component */}
+        <Chatbot tools={tools} />
       </div>
-    </main>
+    </div>
   )
 }
 
+export default AITools

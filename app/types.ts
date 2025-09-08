@@ -29,4 +29,3 @@ export interface Category {
   icon: ComponentType<{ className?: string }>
   color: string
 }
-
