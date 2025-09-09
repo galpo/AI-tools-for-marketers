@@ -1,16 +1,14 @@
-// app/api/feedback/route.ts
-import { NextRequest, NextResponse } from 'next/server'
+return NextResponse.json({ success: true, message: 'Feedback submitted successfully' })
+import { NextRequest, NextResponse } from 
+'next/server'
 
 export async function POST(request: NextRequest) {
   try {
     const { rating, category, message, userEmail } = await request.json()
 
     if (!rating || !category || !message) {
-      return NextResponse.json(
-        { error: 'Rating, category, and message are required' },
-        { status: 400 }
-      )
-    }
+ return NextResponse.json({ success: true, message: 'Feedback submitted successfully' })
+
 
     // Prepare data for Google Sheets
     const timestamp = new Date().toISOString()
