@@ -1,4 +1,7 @@
+// app/api/feedback/route.ts
 import { NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -13,39 +16,26 @@ export async function POST(req: Request) {
       userEmail: userEmail ?? 'Not provided',
     };
 
-    // Method 1: Google Apps Script webhook (recommended)
-    const scriptUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL; // set in Vercel env
-
+    const scriptUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
     if (scriptUrl) {
       try {
-        const response = await fetch(scriptUrl, {
+        const r = await fetch(scriptUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: feedbackData }),
           cache: 'no-store',
         });
-
-        if (!response.ok) throw new Error(`Sheets webhook failed (${response.status})`);
-
-        return NextResponse.json({
-          success: true,
-          message: 'Feedback submitted successfully',
-        });
+        if (!r.ok) throw new Error(`Sheets webhook failed (${r.status})`);
+        return NextResponse.json({ success: true, message: 'Feedback submitted successfully' });
       } catch (err) {
         console.error('Google Sheets submission error:', err);
-        // fall through to fallback
       }
     }
 
-    // Method 2: Fallback – log locally
     console.log('Feedback received (fallback):', feedbackData);
-    return NextResponse.json({
-      success: true,
-      message: 'Feedback received successfully',
-    });
+    return NextResponse.json({ success: true, message: 'Feedback received successfully' });
   } catch (error) {
     console.error('Feedback API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

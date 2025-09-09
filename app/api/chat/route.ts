@@ -1,77 +1,47 @@
 // app/api/chat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-
-// optional, but helps avoid caching and ensures Node runtime
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { message, apiKey } = await request.json();
+    const { message, apiKey } = await req.json();
+    const userMessage = String(message ?? '').trim();
+    if (!userMessage) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      );
-    }
-
-    // Use provided API key or environment variable
     const openaiApiKey = apiKey || process.env.OPENAI_API_KEY;
-
     if (!openaiApiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key is not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        success: true,
+        reply: "Chat API isn't configured yet. Add OPENAI_API_KEY in Vercel.",
+      });
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${openaiApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // update to a current lightweight model
+        model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: `You are a helpful AI marketing assistant for an AI tools directory.
-Be concise, friendly, and provide actionable advice. If users ask about specific tools, provide brief descriptions and use cases.`,
-          },
-          {
-            role: 'user',
-            content: String(message),
-          },
+          { role: 'system', content: 'You are a concise, friendly AI marketing assistant for an AI tools directory. Provide actionable advice and brief use cases.' },
+          { role: 'user', content: userMessage },
         ],
         temperature: 0.7,
         max_tokens: 150,
       }),
     });
 
-    if (!response.ok) {
-      // log upstream text for diagnostics, but keep a clean error for the client
-      const text = await response.text().catch(() => '');
-      console.error('OpenAI API error:', response.status, text);
-      return NextResponse.json(
-        { error: 'Upstream model error' },
-        { status: 502 }
-      );
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      console.error('OpenAI upstream error:', r.status, text);
+      return NextResponse.json({ error: 'Upstream error from model provider' }, { status: 502 });
     }
 
-    const data = await response.json();
-    const botMessage =
-      data?.choices?.[0]?.message?.content ||
-      "Sorry, I couldn't process your request.";
-
-    return NextResponse.json({ message: botMessage });
+    const data = await r.json();
+    const reply = data?.choices?.[0]?.message?.content ?? "Sorry, I couldn't process your request.";
+    return NextResponse.json({ message: reply });
   } catch (error) {
     console.error('Chat API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
