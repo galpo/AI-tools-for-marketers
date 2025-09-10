@@ -1,38 +1,99 @@
-// app/api/auth/login/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { compare } from 'bcryptjs';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { type NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
 
-type User = { id: string; email: string; name?: string; passwordHash: string };
+// Mock user database - in production, use a real database
+const users = [
+  {
+    id: "1",
+    email: "demo@example.com",
+    password: "$2a$10$CwTycUXWue0Thq9StjUM0uJ8KMuq8.wYQgV4VpI6V3qK3G.N7nWma", // password: "password"
+    name: "Demo User",
+    createdAt: new Date().toISOString(),
+  },
+]
 
-declare global { var demoUsers: User[] | undefined; }
-const users: User[] =
-  globalThis.demoUsers ??
-  (globalThis.demoUsers = [
-    {
-      id: 'demo',
-      email: 'demo@example.com',
-      name: 'Demo User',
-      passwordHash: '$2a$10$CwTycUXWue0Thq9StjUM0uJ8KMuq8.wYQgV4VpI6V3qK3G.N7nWma',
-    },
-  ]);
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    const { email, password } = await request.json()
 
-    const user = users.find(u => u.email.toLowerCase() === String(email).toLowerCase());
-    if (!user) return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    // Validate input
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Email and password are required",
+        },
+        { status: 400 },
+      )
+    }
 
-    const ok = await compare(String(password), user.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    // Find user by email
+    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase())
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid email or password",
+        },
+        { status: 401 },
+      )
+    }
 
-    // TODO: issue a real session/JWT
-    return NextResponse.json({ success: true, user: { id: user.id, email: user.email, name: user.name } });
-  } catch (err) {
-    console.error('Login error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password)
+    if (!isValidPassword) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid email or password",
+        },
+        { status: 401 },
+      )
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      process.env.JWT_SECRET || "fallback-secret-key-change-in-production",
+      { expiresIn: "7d" },
+    )
+
+    // Create response with user data (excluding password)
+    const response = NextResponse.json({
+      success: true,
+      message: `Welcome back, ${user.name}!`,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      },
+      token,
+    })
+
+    // Set HTTP-only cookie for authentication
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: "/",
+    })
+
+    return response
+  } catch (error) {
+    console.error("Login error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Something went wrong. Please try again.",
+      },
+      { status: 500 },
+    )
   }
 }

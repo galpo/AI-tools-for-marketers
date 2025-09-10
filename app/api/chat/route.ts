@@ -1,47 +1,33 @@
-// app/api/chat/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { streamText } from "ai"
+import { openai } from "@ai-sdk/openai"
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { message, apiKey } = await req.json();
-    const userMessage = String(message ?? '').trim();
-    if (!userMessage) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    const { messages } = await req.json()
 
-    const openaiApiKey = apiKey || process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      return NextResponse.json({
-        success: true,
-        reply: "Chat API isn't configured yet. Add OPENAI_API_KEY in Vercel.",
-      });
-    }
+    const result = streamText({
+      model: openai("gpt-4o"),
+      system: `You are an AI assistant specialized in marketing tools and technologies. You help marketers find the right AI tools for their specific needs.
 
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiApiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a concise, friendly AI marketing assistant for an AI tools directory. Provide actionable advice and brief use cases.' },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.7,
-        max_tokens: 150,
-      }),
-    });
+You have knowledge of various marketing tool categories including:
+- Analytics & Data tools (like Apollo, Clearbit, Lusha)
+- Lead Builders (like Apollo Intelligence)
+- Workflow Systems
+- Content Creation tools
+- Social Media Management
+- Email Marketing platforms
+- SEO tools
+- And many more
 
-    if (!r.ok) {
-      const text = await r.text().catch(() => '');
-      console.error('OpenAI upstream error:', r.status, text);
-      return NextResponse.json({ error: 'Upstream error from model provider' }, { status: 502 });
-    }
+When users ask about tools, provide helpful recommendations based on their specific needs, budget, and use case. Be concise but informative.`,
+      messages,
+      maxTokens: 1000,
+      temperature: 0.7,
+    })
 
-    const data = await r.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "Sorry, I couldn't process your request.";
-    return NextResponse.json({ message: reply });
+    return result.toDataStreamResponse()
   } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("Chat API error:", error)
+    return new Response("Internal Server Error", { status: 500 })
   }
 }
