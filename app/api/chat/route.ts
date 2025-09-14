@@ -1,44 +1,66 @@
-import { openai } from "@ai-sdk/openai"
-import { streamText } from "ai"
-
-// Allow streaming responses up to 30 seconds
 export const maxDuration = 30
+
+const mockResponses = [
+  "Based on your needs, I'd recommend checking out Apollo for lead generation - it's excellent for finding contact data and has great integration capabilities.",
+  "For email marketing, I'd suggest looking at Mailchimp for beginners or ConvertKit for more advanced automation features. Both offer great templates and analytics.",
+  "SEO tools I'd recommend include SEMrush for comprehensive analysis, Ahrefs for backlink research, and Google Search Console which is free and essential.",
+  "For content creation, Copy.ai and Jasper are popular AI-powered options, while Canva is great for visual content creation.",
+  "Free marketing automation tools include HubSpot's free tier, Mailchimp's basic plan, and Zapier's starter plan for connecting different tools.",
+]
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json()
 
-    // System prompt for AI marketing tools assistant
-    const systemPrompt = `You are an AI assistant specialized in marketing tools and technologies. You help users discover, compare, and choose the best AI tools for their marketing needs.
+    if (!messages || !Array.isArray(messages)) {
+      return new Response("Invalid messages format", { status: 400 })
+    }
 
-Your knowledge includes:
-- Lead generation tools (Apollo, Clearbit, Lusha)
-- Content creation tools (Jasper, Copy.ai, Writesonic)
-- Analytics and data tools (HubSpot, Salesforce, Google Analytics)
-- Email marketing tools (Mailchimp, ConvertKit, Klaviyo)
-- Social media tools (Hootsuite, Buffer, Sprout Social)
-- SEO tools (SEMrush, Ahrefs, Moz)
-- Automation tools (Zapier, Make, ActiveCampaign)
-- CRM systems (HubSpot, Salesforce, Pipedrive)
+    const lastMessage = messages[messages.length - 1]?.content || ""
 
-When users ask about tools:
-1. Provide specific tool recommendations
-2. Compare features and pricing when relevant
-3. Suggest use cases and best practices
-4. Ask clarifying questions to better understand their needs
-5. Keep responses concise but informative
+    // Simple keyword-based responses
+    let response =
+      "I'd be happy to help you find the right marketing tools! Could you tell me more about your specific needs?"
 
-Always be helpful, accurate, and focused on marketing tools and strategies.`
+    if (lastMessage.toLowerCase().includes("lead")) {
+      response = mockResponses[0]
+    } else if (lastMessage.toLowerCase().includes("email")) {
+      response = mockResponses[1]
+    } else if (lastMessage.toLowerCase().includes("seo")) {
+      response = mockResponses[2]
+    } else if (lastMessage.toLowerCase().includes("content")) {
+      response = mockResponses[3]
+    } else if (lastMessage.toLowerCase().includes("free")) {
+      response = mockResponses[4]
+    }
 
-    const result = streamText({
-      model: openai("gpt-4o"),
-      system: systemPrompt,
-      messages,
-      temperature: 0.7,
-      maxTokens: 1000,
+    // Simulate streaming response
+    const stream = new ReadableStream({
+      start(controller) {
+        const words = response.split(" ")
+        let index = 0
+
+        const interval = setInterval(() => {
+          if (index < words.length) {
+            const chunk = words[index] + " "
+            controller.enqueue(new TextEncoder().encode(`data: {"content":"${chunk}"}\n\n`))
+            index++
+          } else {
+            controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`))
+            controller.close()
+            clearInterval(interval)
+          }
+        }, 50)
+      },
     })
 
-    return result.toDataStreamResponse()
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    })
   } catch (error) {
     console.error("Chat API error:", error)
     return new Response("Internal Server Error", { status: 500 })
