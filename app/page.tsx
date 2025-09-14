@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Chatbot } from "@/components/chatbot"
+import { useAuth } from "@/contexts/auth-context"
+import { AuthModal } from "@/components/auth/auth-modal"
 import {
   Search,
   Users,
@@ -21,6 +23,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  User,
+  LogOut,
 } from "lucide-react"
 
 interface Tool {
@@ -43,6 +47,10 @@ const categoryConfig = {
 }
 
 function AITools() {
+  const { user, logout, isLoading: authLoading } = useAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<"login" | "register">("login")
+
   const [tools, setTools] = useState<Tool[]>([])
   const [filteredTools, setFilteredTools] = useState<Tool[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -301,7 +309,21 @@ function AITools() {
     }
   }
 
-  if (loading) {
+  const handleLogin = () => {
+    setAuthMode("login")
+    setShowAuthModal(true)
+  }
+
+  const handleSignup = () => {
+    setAuthMode("register")
+    setShowAuthModal(true)
+  }
+
+  const handleLogout = async () => {
+    await logout()
+  }
+
+  if (loading || authLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -312,8 +334,34 @@ function AITools() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">AI Tools for Marketers</h1>
+        {/* Header with auth buttons */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
+
+          <div className="flex items-center gap-4">
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleLogin}>
+                  Log In
+                </Button>
+                <Button size="sm" onClick={handleSignup}>
+                  Sign Up
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Filter Tools Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
@@ -576,6 +624,9 @@ function AITools() {
 
         {/* Chatbot Component */}
         <Chatbot tools={tools} />
+
+        {/* Auth Modal */}
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} defaultMode={authMode} />
       </div>
     </div>
   )
