@@ -27,26 +27,30 @@ const initialUsers: User[] = [
   },
 ]
 
-// Use a global variable to persist users across requests in development
-// In production, this would be a database
-declare global {
-  var __users: User[] | undefined
-}
-
-if (!global.__users) {
-  global.__users = [...initialUsers]
-}
-
-export const users = global.__users
+// Simple in-memory storage (resets on server restart)
+const users: User[] = [...initialUsers]
 
 export function addUser(user: User): void {
   users.push(user)
+  console.log("[v0] User added. Total users:", users.length)
 }
 
 export function findUserByEmail(email: string): User | undefined {
-  return users.find((u) => u.email === email)
+  const user = users.find((u) => u.email === email)
+  console.log("[v0] Finding user by email:", email, "Found:", !!user)
+  return user
 }
 
 export function findUserByCredentials(email: string, password: string): User | undefined {
-  return users.find((u) => u.email === email && u.password === password)
+  const user = users.find((u) => u.email === email && u.password === password)
+  console.log("[v0] Finding user by credentials:", email, "Found:", !!user)
+  console.log(
+    "[v0] Available users:",
+    users.map((u) => u.email),
+  )
+  return user
+}
+
+export function getAllUsers(): User[] {
+  return users
 }
