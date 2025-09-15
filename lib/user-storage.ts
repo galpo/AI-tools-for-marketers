@@ -25,6 +25,13 @@ const initialUsers: User[] = [
     name: "Admin User",
     createdAt: new Date().toISOString(),
   },
+  {
+    id: "3",
+    email: "riteerouf@gmail.com",
+    password: "password123", // Using default password since original was lost
+    name: "Registered User",
+    createdAt: new Date().toISOString(),
+  },
 ]
 
 // Simple in-memory storage (resets on server restart)
