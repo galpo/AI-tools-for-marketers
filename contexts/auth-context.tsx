@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isValidPassword) {
         return {
           success: false,
-          error: "Invalid password. Use 'demo123' for regular access or 'admin123' for admin access.",
+          error: "Invalid password. Use 'demo123' to access the tools.",
         }
       }
 
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isValidPassword) {
         return {
           success: false,
-          error: "Invalid password. Use 'demo123' for regular access or 'admin123' for admin access.",
+          error: "Invalid password. Use 'demo123' to access the tools.",
         }
       }
 
