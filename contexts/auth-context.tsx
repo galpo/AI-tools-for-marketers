@@ -2,11 +2,10 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
-import type { User } from "@supabase/supabase-js"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 interface AuthContextType {
-  user: User | null
+  user: any | null
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
@@ -16,49 +15,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    }
-
-    getInitialSession()
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+    setIsLoading(status === "loading")
+  }, [status])
 
   const login = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn("credentials", {
         email,
         password,
+        redirect: false,
       })
 
-      if (error) {
-        return { success: false, error: error.message }
+      if (result?.error) {
+        return { success: false, error: result.error }
       }
 
-      if (data.user) {
-        setUser(data.user)
-        return { success: true }
-      }
-
-      return { success: false, error: "Login failed" }
+      return { success: true }
     } catch (error) {
       console.error("Login error:", error)
       return { success: false, error: "Network error. Please try again." }
@@ -67,32 +43,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      const redirectUrl =
-        process.env.NODE_ENV === "production"
-          ? window.location.origin
-          : process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            name: name,
-          },
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ name, email, password }),
       })
 
-      if (error) {
-        return { success: false, error: error.message }
+      const data = await response.json()
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Registration failed" }
       }
 
-      if (data.user) {
-        // Note: User might need to confirm email before being fully authenticated
-        return { success: true }
-      }
-
-      return { success: false, error: "Registration failed" }
+      // After successful registration, sign them in
+      const loginResult = await login(email, password)
+      return loginResult
     } catch (error) {
       console.error("Registration error:", error)
       return { success: false, error: "Network error. Please try again." }
@@ -101,14 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut()
-      setUser(null)
+      await signOut({ redirect: false })
     } catch (error) {
       console.error("Logout failed:", error)
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user: session?.user || null,
+        login,
+        register,
+        logout,
+        isLoading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
