@@ -65,16 +65,6 @@ function AITools() {
   const [toolsPerPage] = useState(6)
   const [favorites, setFavorites] = useState<string[]>([])
 
-  const [authState, setAuthState] = useState<{
-    user: any
-    logout: any
-    isLoading: boolean
-  }>({
-    user: user,
-    logout: logout,
-    isLoading: isLoading,
-  })
-
   useEffect(() => {
     fetchTools()
   }, [])
@@ -437,12 +427,12 @@ function AITools() {
   }
 
   const handleLogout = async () => {
-    if (authState.logout) {
-      await authState.logout()
+    if (logout) {
+      await logout()
     }
   }
 
-  if (authState.isLoading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -458,13 +448,13 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
-            <FeedbackForm userEmail={authState.user?.email} userName={authState.user?.name} />
+            <FeedbackForm userEmail={user?.email} userName={user?.name} />
 
-            {authState.user ? (
+            {user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {authState.user.name}</span>
+                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />

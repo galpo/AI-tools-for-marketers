@@ -4,44 +4,31 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Star, Loader2 } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { MessageSquare } from "lucide-react"
 
 interface FeedbackFormProps {
-  toolName?: string
   userEmail?: string
   userName?: string
 }
 
-export default function FeedbackForm({ toolName, userEmail, userName }: FeedbackFormProps) {
+export default function FeedbackForm({ userEmail, userName }: FeedbackFormProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [type, setType] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState("")
-  const [rating, setRating] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState("")
-  const [showAuthModal, setShowAuthModal] = useState(false)
-
-  const { user, isLoading: authLoading } = useAuth()
-
-  const handleFeedbackClick = () => {
-    if (!user) {
-      setShowAuthModal(true)
-    } else {
-      setIsOpen(true)
-    }
-  }
+  const [type, setType] = useState("")
+  const [rating, setRating] = useState("")
+  const [toolName, setToolName] = useState("")
+  const [email, setEmail] = useState(userEmail || "")
+  const [name, setName] = useState(userName || "")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    setIsSubmitting(true)
 
     try {
       const response = await fetch("/api/feedback", {
@@ -52,138 +39,134 @@ export default function FeedbackForm({ toolName, userEmail, userName }: Feedback
         body: JSON.stringify({
           type,
           message,
-          rating: rating > 0 ? rating : null,
+          rating,
           toolName,
-          userEmail: user?.email || userEmail,
-          userName: user?.name || userName,
+          userEmail: email,
+          userName: name,
+          source: "AI Tools for Marketers",
         }),
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        setSuccess(true)
-        setTimeout(() => {
-          setIsOpen(false)
-          setSuccess(false)
-          setType("")
-          setMessage("")
-          setRating(0)
-        }, 2000)
+      if (response.ok) {
+        // Reset form
+        setMessage("")
+        setType("")
+        setRating("")
+        setToolName("")
+        setEmail(userEmail || "")
+        setName(userName || "")
+        setIsOpen(false)
+        alert("Thank you for your feedback!")
       } else {
-        setError(data.error || "Failed to submit feedback")
+        throw new Error("Failed to submit feedback")
       }
     } catch (error) {
-      setError("Network error. Please try again.")
+      console.error("Error submitting feedback:", error)
+      alert("Failed to submit feedback. Please try again.")
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2 bg-transparent"
-            onClick={handleFeedbackClick}
-            disabled={authLoading}
-          >
-            <MessageSquare className="h-4 w-4" />
-            Feedback
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-md bg-white border border-gray-200 shadow-lg">
-          <DialogHeader>
-            <DialogTitle>Send Feedback</DialogTitle>
-          </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Feedback
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Share Your Feedback</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="type">Feedback Type</Label>
+            <Select value={type} onValueChange={setType} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select feedback type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bug">Bug Report</SelectItem>
+                <SelectItem value="feature">Feature Request</SelectItem>
+                <SelectItem value="improvement">Improvement Suggestion</SelectItem>
+                <SelectItem value="general">General Feedback</SelectItem>
+                <SelectItem value="tool-suggestion">Tool Suggestion</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          {success ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="h-8 w-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Thank you!</h3>
-              <p className="text-gray-600">Your feedback has been submitted successfully.</p>
+          {type === "tool-suggestion" && (
+            <div>
+              <Label htmlFor="toolName">Tool Name</Label>
+              <Input
+                id="toolName"
+                value={toolName}
+                onChange={(e) => setToolName(e.target.value)}
+                placeholder="Name of the tool you'd like to suggest"
+              />
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Feedback Type</label>
-                <Select value={type} onValueChange={setType} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select feedback type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bug">Bug Report</SelectItem>
-                    <SelectItem value="feature">Feature Request</SelectItem>
-                    <SelectItem value="tool_review">Tool Review</SelectItem>
-                    <SelectItem value="general">General Feedback</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {toolName && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Tool</label>
-                  <Input value={toolName} disabled />
-                </div>
-              )}
-
-              {type === "tool_review" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Rating</label>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} type="button" onClick={() => setRating(star)} className="p-1">
-                        <Star
-                          className={`h-6 w-6 ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Message</label>
-                <Textarea
-                  placeholder="Tell us what you think..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading || !type || !message}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Feedback
-              </Button>
-            </form>
           )}
-        </DialogContent>
-      </Dialog>
 
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Login Required</h3>
-            <p className="text-gray-600 mb-4">Please log in to submit feedback.</p>
-            <Button onClick={() => setShowAuthModal(false)} className="w-full">
-              Close
+          <div>
+            <Label htmlFor="message">Message</Label>
+            <Textarea
+              id="message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Tell us about your experience or suggestion..."
+              required
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="rating">Overall Rating (Optional)</Label>
+            <Select value={rating} onValueChange={setRating}>
+              <SelectTrigger>
+                <SelectValue placeholder="Rate your experience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">⭐⭐⭐⭐⭐ Excellent</SelectItem>
+                <SelectItem value="4">⭐⭐⭐⭐ Good</SelectItem>
+                <SelectItem value="3">⭐⭐⭐ Average</SelectItem>
+                <SelectItem value="2">⭐⭐ Poor</SelectItem>
+                <SelectItem value="1">⭐ Very Poor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!userEmail && (
+            <div>
+              <Label htmlFor="email">Email (Optional)</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+              />
+            </div>
+          )}
+
+          {!userName && (
+            <div>
+              <Label htmlFor="name">Name (Optional)</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Submit Feedback"}
             </Button>
           </div>
-        </div>
-      )}
-    </>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
