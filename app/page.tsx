@@ -455,7 +455,9 @@ function AITools() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">
+                    Welcome, {user.name || user.email?.split("@")[0] || "User"}
+                  </span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
