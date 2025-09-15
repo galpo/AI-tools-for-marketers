@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Feedback submitted successfully to Google Sheets",
+      message: "Feedback submitted successfully",
       id: Date.now().toString(),
     })
   } catch (error) {
