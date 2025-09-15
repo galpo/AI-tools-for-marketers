@@ -20,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const USER_PASSWORD = "user123"
+const USER_PASSWORD = "demo123"
 const ADMIN_PASSWORD = "admin123"
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isValidPassword) {
         return {
           success: false,
-          error: "Invalid password. Use 'user123' for regular access or 'admin123' for admin access.",
+          error: "Invalid password. Use 'demo123' for regular access or 'admin123' for admin access.",
         }
       }
 
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isValidPassword) {
         return {
           success: false,
-          error: "Invalid password. Use 'user123' for regular access or 'admin123' for admin access.",
+          error: "Invalid password. Use 'demo123' for regular access or 'admin123' for admin access.",
         }
       }
 
