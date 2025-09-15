@@ -13,6 +13,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Type and message are required" }, { status: 400 })
     }
 
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      cookies: {
+        get(name: string) {
+          return cookies().get(name)?.value
+        },
+      },
+    })
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      console.log("[v0] Unauthenticated feedback attempt blocked")
+      return NextResponse.json(
+        { error: "Authentication required. Please sign in to submit feedback." },
+        { status: 401 },
+      )
+    }
+
+    console.log("[v0] Authenticated user submitting feedback:", user.id)
+
     // Prepare data for Google Sheets
     const feedbackData = {
       timestamp: new Date().toISOString(),
@@ -20,23 +43,16 @@ export async function POST(request: NextRequest) {
       message,
       rating: rating || null,
       toolName: toolName || null,
-      userEmail: userEmail || "Anonymous",
-      userName: userName || "Anonymous",
+      userEmail: user.email || "Unknown",
+      userName: user.user_metadata?.name || userName || "Unknown",
+      userId: user.id,
       source: "AI Tools for Marketers",
     }
 
     console.log("[v0] Prepared feedback data:", feedbackData)
 
     const GOOGLE_SHEETS_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL
-    console.log("[v0] Environment check:")
-    console.log("[v0] NODE_ENV:", process.env.NODE_ENV)
-    console.log("[v0] VERCEL_ENV:", process.env.VERCEL_ENV)
     console.log("[v0] Google Sheets URL exists:", !!GOOGLE_SHEETS_URL)
-    console.log("[v0] Google Sheets URL length:", GOOGLE_SHEETS_URL?.length || 0)
-    console.log(
-      "[v0] All env vars starting with GOOGLE:",
-      Object.keys(process.env).filter((key) => key.startsWith("GOOGLE")),
-    )
 
     if (GOOGLE_SHEETS_URL) {
       try {
@@ -49,99 +65,49 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(feedbackData),
         })
 
-        console.log("[v0] Google Sheets response status:", response.status)
-        console.log("[v0] Google Sheets response headers:", Object.fromEntries(response.headers.entries()))
-
         if (!response.ok) {
           const errorText = await response.text()
           console.error("[v0] Google Sheets error response:", errorText)
-          return NextResponse.json(
-            {
-              error: "Failed to save feedback to Google Sheets. Please check the webhook URL configuration.",
-              details: errorText,
-            },
-            { status: 500 },
-          )
-        } else {
-          const responseText = await response.text()
-          console.log("[v0] Google Sheets success response:", responseText)
+          throw new Error(`Google Sheets error: ${errorText}`)
         }
+
+        const responseText = await response.text()
+        console.log("[v0] Google Sheets success response:", responseText)
       } catch (error) {
         console.error("[v0] Google Sheets integration error:", error)
-        return NextResponse.json(
-          {
-            error: "Google Sheets integration failed. Please check your webhook configuration.",
-            details: error instanceof Error ? error.message : "Unknown error",
-          },
-          { status: 500 },
-        )
-      }
-    } else {
-      console.log("[v0] No Google Sheets webhook URL configured, using Supabase fallback")
-
-      try {
-        const supabase = createServerClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          {
-            cookies: {
-              get(name: string) {
-                return cookies().get(name)?.value
-              },
-            },
-          },
-        )
-
-        // Get authenticated user or use anonymous user ID
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        const userId = user?.id || "00000000-0000-0000-0000-000000000000" // Anonymous user UUID
-
-        // Map to existing table structure
-        const supabaseData = {
-          type,
-          message,
-          rating: rating || null,
-          tool_name: toolName || null,
-          user_id: userId, // Use actual user ID or anonymous UUID
-          created_at: new Date().toISOString(),
-        }
-
-        const { error } = await supabase.from("feedback").insert([supabaseData])
-
-        if (error) {
-          console.error("[v0] Supabase fallback error:", error)
-          return NextResponse.json({ error: "Failed to save feedback. Please try again." }, { status: 500 })
-        }
-
-        console.log("[v0] Feedback saved to Supabase successfully")
-
-        return NextResponse.json({
-          success: true,
-          message: "Feedback submitted successfully",
-          id: Date.now().toString(),
-        })
-      } catch (supabaseError) {
-        console.error("[v0] Supabase fallback failed:", supabaseError)
-        return NextResponse.json({ error: "Failed to save feedback. Please contact support." }, { status: 500 })
+        // Fall through to Supabase fallback
       }
     }
 
-    // Store feedback locally (in production, use a database)
-    console.log("Feedback received:", feedbackData)
+    try {
+      // Map to existing table structure with authenticated user ID
+      const supabaseData = {
+        type,
+        message,
+        rating: rating || null,
+        tool_name: toolName || null,
+        user_id: user.id, // Use authenticated user ID
+        created_at: new Date().toISOString(),
+      }
 
-    // Send email notification (optional)
-    if (process.env.NOTIFICATION_EMAIL) {
-      // In production, integrate with email service like SendGrid, Resend, etc.
-      console.log("Email notification would be sent to:", process.env.NOTIFICATION_EMAIL)
+      const { error } = await supabase.from("feedback").insert([supabaseData])
+
+      if (error) {
+        console.error("[v0] Supabase error:", error)
+        return NextResponse.json({ error: "Failed to save feedback. Please try again." }, { status: 500 })
+      }
+
+      console.log("[v0] Feedback saved to Supabase successfully")
+
+      return NextResponse.json({
+        success: true,
+        message: "Feedback submitted successfully",
+        id: Date.now().toString(),
+      })
+    } catch (supabaseError) {
+      console.error("[v0] Supabase failed:", supabaseError)
+      return NextResponse.json({ error: "Failed to save feedback. Please contact support." }, { status: 500 })
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Feedback submitted successfully",
-      id: Date.now().toString(),
-    })
   } catch (error) {
     console.error("Feedback API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

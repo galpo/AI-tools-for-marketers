@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MessageSquare, AlertCircle, CheckCircle } from "lucide-react"
+import { MessageSquare, AlertCircle, CheckCircle, Lock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/contexts/auth-context"
 
 interface FeedbackFormProps {
   userEmail?: string
@@ -24,15 +25,21 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
   const [type, setType] = useState("")
   const [rating, setRating] = useState("")
   const [toolName, setToolName] = useState("")
-  const [email, setEmail] = useState(userEmail || "")
-  const [name, setName] = useState(userName || "")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+
+  const { user, isLoading } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError("")
+
+    if (!user) {
+      setError("Please sign in to submit feedback.")
+      setIsSubmitting(false)
+      return
+    }
 
     try {
       const response = await fetch("/api/feedback", {
@@ -45,8 +52,8 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
           message,
           rating,
           toolName,
-          userEmail: email,
-          userName: name,
+          userEmail: user.email,
+          userName: user.user_metadata?.name || userName,
           source: "AI Tools for Marketers",
         }),
       })
@@ -58,8 +65,6 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
         setType("")
         setRating("")
         setToolName("")
-        setEmail(userEmail || "")
-        setName(userName || "")
         setSuccess(true)
 
         setTimeout(() => {
@@ -67,7 +72,9 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
           setSuccess(false)
         }, 2000)
       } else {
-        if (data.missingEnvVar === "GOOGLE_SHEETS_WEBHOOK_URL") {
+        if (response.status === 401) {
+          setError("Please sign in to submit feedback.")
+        } else if (data.missingEnvVar === "GOOGLE_SHEETS_WEBHOOK_URL") {
           setError("Google Sheets integration is not configured. Please contact support to enable feedback submission.")
         } else {
           setError(data.error || "Failed to submit feedback. Please try again.")
@@ -79,6 +86,39 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        <MessageSquare className="h-4 w-4 mr-2" />
+        Feedback
+      </Button>
+    )
+  }
+
+  if (!user) {
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Feedback
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle>Authentication Required</DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-8">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Sign In Required</h3>
+            <p className="text-gray-600 mb-4">You need to be signed in to submit feedback.</p>
+            <Button onClick={() => setIsOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
@@ -165,25 +205,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
               </Select>
             </div>
 
-            {!userEmail && (
-              <div>
-                <Label htmlFor="email">Email (Optional)</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                />
-              </div>
-            )}
-
-            {!userName && (
-              <div>
-                <Label htmlFor="name">Name (Optional)</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-              </div>
-            )}
+            <div className="text-sm text-gray-600">Submitting as: {user.email}</div>
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
