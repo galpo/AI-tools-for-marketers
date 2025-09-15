@@ -1,7 +1,6 @@
 import NextAuth from "next-auth"
 import { SupabaseAdapter } from "@auth/supabase-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
-import GoogleProvider from "next-auth/providers/google"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: SupabaseAdapter({
@@ -19,10 +18,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // This will be handled by the adapter
         return null
       },
-    }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   pages: {
