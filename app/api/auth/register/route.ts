@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { SignJWT } from "jose"
+import { addUser, findUserByEmail } from "@/lib/user-storage"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
@@ -32,8 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 6 characters long" }, { status: 400 })
     }
 
-    // Check if user already exists
-    const existingUser = users.find((u) => u.email === email)
+    const existingUser = findUserByEmail(email)
     if (existingUser) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
     }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     }
 
-    users.push(newUser)
+    addUser(newUser)
 
     // Create JWT token
     const token = await new SignJWT({

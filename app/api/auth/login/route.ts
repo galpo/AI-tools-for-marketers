@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { SignJWT } from "jose"
+import { findUserByCredentials } from "@/lib/user-storage"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
@@ -30,8 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // Find user
-    const user = users.find((u) => u.email === email && u.password === password)
+    const user = await findUserByCredentials(email, password)
 
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
