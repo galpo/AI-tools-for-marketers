@@ -16,7 +16,7 @@ interface FeedbackFormProps {
   userName?: string
 }
 
-export default function FeedbackForm({ userEmail, userName }: FeedbackFormProps) {
+const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState("")
@@ -170,3 +170,5 @@ export default function FeedbackForm({ userEmail, userName }: FeedbackFormProps)
     </Dialog>
   )
 }
+
+export default FeedbackForm
