@@ -4,6 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     const { type, message, rating, toolName, userEmail, userName } = await request.json()
 
+    console.log("[v0] Feedback submission received:", { type, message, rating, toolName, userEmail, userName })
+
     // Validate required fields
     if (!type || !message) {
       return NextResponse.json({ error: "Type and message are required" }, { status: 400 })
@@ -21,11 +23,16 @@ export async function POST(request: NextRequest) {
       source: "AI Tools for Marketers",
     }
 
+    console.log("[v0] Prepared feedback data:", feedbackData)
+
     // Google Sheets integration
     const GOOGLE_SHEETS_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL
 
+    console.log("[v0] Google Sheets URL exists:", !!GOOGLE_SHEETS_URL)
+
     if (GOOGLE_SHEETS_URL) {
       try {
+        console.log("[v0] Sending to Google Sheets...")
         const response = await fetch(GOOGLE_SHEETS_URL, {
           method: "POST",
           headers: {
@@ -34,13 +41,19 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(feedbackData),
         })
 
+        console.log("[v0] Google Sheets response status:", response.status)
+
         if (!response.ok) {
           console.error("Failed to send to Google Sheets:", response.statusText)
+        } else {
+          console.log("[v0] Successfully sent to Google Sheets")
         }
       } catch (error) {
         console.error("Google Sheets integration error:", error)
         // Continue processing even if Google Sheets fails
       }
+    } else {
+      console.log("[v0] No Google Sheets webhook URL configured")
     }
 
     // Store feedback locally (in production, use a database)
