@@ -42,26 +42,25 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
     }
 
     try {
-      const feedbackData = {
-        id: Date.now().toString(),
-        type,
-        message,
-        rating,
-        toolName,
-        userEmail: user.email,
-        userName: user.name,
-        source: "AI Tools for Marketers",
-        timestamp: new Date().toISOString(),
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          message,
+          rating,
+          toolName,
+          userEmail: user.email,
+          userName: user.name,
+          source: "AI Tools for Marketers",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to submit feedback")
       }
-
-      const existingFeedback = JSON.parse(localStorage.getItem("feedback") || "[]")
-      existingFeedback.push(feedbackData)
-      localStorage.setItem("feedback", JSON.stringify(existingFeedback))
-
-      console.log("Feedback submitted:", feedbackData)
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       setMessage("")
       setType("")
@@ -75,7 +74,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
       }, 2000)
     } catch (error) {
       console.error("Error submitting feedback:", error)
-      setError("Network error. Please check your connection and try again.")
+      setError("Failed to submit feedback. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
