@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
     } else {
       console.log("[v0] No Google Sheets webhook URL configured, using Supabase fallback")
 
-      // Store in Supabase as fallback
       try {
         const supabase = createServerClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,7 +92,17 @@ export async function POST(request: NextRequest) {
           },
         )
 
-        const { error } = await supabase.from("feedback").insert([feedbackData])
+        // Map to existing table structure
+        const supabaseData = {
+          type,
+          message,
+          rating: rating || null,
+          tool_name: toolName || null,
+          user_id: null, // Will be set by RLS if user is authenticated
+          created_at: new Date().toISOString(),
+        }
+
+        const { error } = await supabase.from("feedback").insert([supabaseData])
 
         if (error) {
           console.error("[v0] Supabase fallback error:", error)
