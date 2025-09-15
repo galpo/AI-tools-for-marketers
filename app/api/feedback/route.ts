@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,15 +77,40 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      console.log("[v0] No Google Sheets webhook URL configured")
-      return NextResponse.json(
-        {
-          error:
-            "Google Sheets webhook URL is not configured. Please add GOOGLE_SHEETS_WEBHOOK_URL environment variable.",
-          missingEnvVar: "GOOGLE_SHEETS_WEBHOOK_URL",
-        },
-        { status: 500 },
-      )
+      console.log("[v0] No Google Sheets webhook URL configured, using Supabase fallback")
+
+      // Store in Supabase as fallback
+      try {
+        const supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            cookies: {
+              get(name: string) {
+                return cookies().get(name)?.value
+              },
+            },
+          },
+        )
+
+        const { error } = await supabase.from("feedback").insert([feedbackData])
+
+        if (error) {
+          console.error("[v0] Supabase fallback error:", error)
+          return NextResponse.json({ error: "Failed to save feedback. Please try again." }, { status: 500 })
+        }
+
+        console.log("[v0] Feedback saved to Supabase successfully")
+
+        return NextResponse.json({
+          success: true,
+          message: "Feedback submitted successfully",
+          id: Date.now().toString(),
+        })
+      } catch (supabaseError) {
+        console.error("[v0] Supabase fallback failed:", supabaseError)
+        return NextResponse.json({ error: "Failed to save feedback. Please contact support." }, { status: 500 })
+      }
     }
 
     // Store feedback locally (in production, use a database)
