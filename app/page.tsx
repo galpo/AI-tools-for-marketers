@@ -48,9 +48,27 @@ const categoryConfig = {
 }
 
 function AITools() {
-  const { user, logout, isLoading: authLoading } = useAuth()
+  const { user, logout, isLoading } = useAuth()
+  const [authState, setAuthState] = useState<{
+    user: any | null
+    logout: (() => Promise<void>) | null
+    isLoading: boolean
+  }>({
+    user: null,
+    logout: null,
+    isLoading: true,
+  })
+
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
+
+  useEffect(() => {
+    setAuthState({
+      user: user,
+      logout: logout,
+      isLoading: isLoading,
+    })
+  }, [user, logout, isLoading])
 
   const [tools, setTools] = useState<Tool[]>([])
   const [filteredTools, setFilteredTools] = useState<Tool[]>([])
@@ -426,10 +444,12 @@ function AITools() {
   }
 
   const handleLogout = async () => {
-    await logout()
+    if (authState.logout) {
+      await authState.logout()
+    }
   }
 
-  if (loading || authLoading) {
+  if (loading || authState.isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -445,13 +465,13 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
-            <FeedbackForm userEmail={user?.email} userName={user?.name} />
+            <FeedbackForm userEmail={authState.user?.email} userName={authState.user?.name} />
 
-            {user ? (
+            {authState.user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
+                  <span className="text-sm text-gray-700">Welcome, {authState.user.name}</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
