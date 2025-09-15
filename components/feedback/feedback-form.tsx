@@ -76,7 +76,7 @@ export function FeedbackForm({ toolName, userEmail, userName }: FeedbackFormProp
           Feedback
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-white border border-gray-200 shadow-lg">
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
         </DialogHeader>
