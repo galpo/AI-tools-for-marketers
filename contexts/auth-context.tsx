@@ -7,6 +7,7 @@ interface SimpleUser {
   id: string
   email: string
   name: string
+  isAdmin: boolean
 }
 
 interface AuthContextType {
@@ -19,11 +20,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const TEST_USERS = [
-  { id: "1", email: "test@example.com", password: "password123", name: "Test User" },
-  { id: "2", email: "demo@example.com", password: "demo123", name: "Demo User" },
-  { id: "3", email: "admin@example.com", password: "admin123", name: "Admin User" },
-]
+const USER_PASSWORD = "user123"
+const ADMIN_PASSWORD = "admin123"
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SimpleUser | null>(null)
@@ -44,16 +42,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const testUser = TEST_USERS.find((u) => u.email === email && u.password === password)
+      let isAdmin = false
+      let isValidPassword = false
 
-      if (!testUser) {
-        return { success: false, error: "Invalid email or password" }
+      if (password === ADMIN_PASSWORD) {
+        isAdmin = true
+        isValidPassword = true
+      } else if (password === USER_PASSWORD) {
+        isAdmin = false
+        isValidPassword = true
+      }
+
+      if (!isValidPassword) {
+        return {
+          success: false,
+          error: "Invalid password. Use 'user123' for regular access or 'admin123' for admin access.",
+        }
       }
 
       const userSession = {
-        id: testUser.id,
-        email: testUser.email,
-        name: testUser.name,
+        id: isAdmin ? "admin" : "user",
+        email: email,
+        name: email.split("@")[0], // Use email prefix as name
+        isAdmin: isAdmin,
       }
 
       setUser(userSession)
@@ -68,26 +79,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      // Check if user already exists
-      const existingUser = TEST_USERS.find((u) => u.email === email)
-      if (existingUser) {
-        return { success: false, error: "User with this email already exists" }
+      let isAdmin = false
+      let isValidPassword = false
+
+      if (password === ADMIN_PASSWORD) {
+        isAdmin = true
+        isValidPassword = true
+      } else if (password === USER_PASSWORD) {
+        isAdmin = false
+        isValidPassword = true
       }
 
-      // Create new user
-      const newUser = {
-        id: (TEST_USERS.length + 1).toString(),
-        email,
-        password,
-        name,
+      if (!isValidPassword) {
+        return {
+          success: false,
+          error: "Invalid password. Use 'user123' for regular access or 'admin123' for admin access.",
+        }
       }
-
-      TEST_USERS.push(newUser)
 
       const userSession = {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
+        id: isAdmin ? "admin" : "user",
+        email: email,
+        name: name,
+        isAdmin: isAdmin,
       }
 
       setUser(userSession)
