@@ -24,8 +24,8 @@ import {
   User,
   LogOut,
 } from "lucide-react"
-import FeedbackForm from "@/components/feedback-form" // Import FeedbackForm component
-import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
+import FeedbackForm from "@/components/feedback-form"
+import { useAuth } from "@/contexts/auth-context"
 
 interface Tool {
   "Key Tool": string
@@ -33,6 +33,26 @@ interface Tool {
   Comments: string
   Pricing: string
   "Ranking/Insight": string
+}
+
+function useSafeAuth() {
+  const [authState, setAuthState] = useState<{
+    user: any
+    logout: any
+    isLoading: boolean
+  }>({
+    user: null,
+    logout: null,
+    isLoading: true,
+  })
+
+  const authContext = useAuth()
+
+  useEffect(() => {
+    setAuthState(authContext)
+  }, [authContext])
+
+  return authState
 }
 
 const categoryConfig = {
@@ -47,7 +67,7 @@ const categoryConfig = {
 }
 
 function AITools() {
-  const { user, logout, isLoading } = useAuth() // Use useAuth hook at the top level
+  const { user, logout, isLoading } = useSafeAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
 
@@ -771,22 +791,4 @@ function AITools() {
   )
 }
 
-function SafeAITools() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading AI tools...</div>
-      </div>
-    )
-  }
-
-  return <AITools />
-}
-
-export default SafeAITools
+export default AITools
