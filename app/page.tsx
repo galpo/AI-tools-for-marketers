@@ -49,6 +49,7 @@ const categoryConfig = {
 
 function AITools() {
   const { user, logout, isLoading } = useAuth()
+  const [authError, setAuthError] = useState(false)
   const [authState, setAuthState] = useState<{
     user: any | null
     logout: (() => Promise<void>) | null
@@ -59,16 +60,16 @@ function AITools() {
     isLoading: true,
   })
 
+  useEffect(() => {
+    setAuthState({ user, logout, isLoading })
+    if (!user) {
+      console.log("[v0] Auth context not available during SSG, using fallback state")
+      setAuthError(true)
+    }
+  }, [user, logout, isLoading])
+
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
-
-  useEffect(() => {
-    setAuthState({
-      user: user,
-      logout: logout,
-      isLoading: isLoading,
-    })
-  }, [user, logout, isLoading])
 
   const [tools, setTools] = useState<Tool[]>([])
   const [filteredTools, setFilteredTools] = useState<Tool[]>([])
@@ -449,7 +450,7 @@ function AITools() {
     }
   }
 
-  if (loading || authState.isLoading) {
+  if (loading || (authState.isLoading && !authError)) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -793,4 +794,22 @@ function AITools() {
   )
 }
 
-export default AITools
+function SafeAITools() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">Loading AI tools...</div>
+      </div>
+    )
+  }
+
+  return <AITools />
+}
+
+export default SafeAITools
