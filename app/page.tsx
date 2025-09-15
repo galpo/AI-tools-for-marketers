@@ -35,26 +35,6 @@ interface Tool {
   "Ranking/Insight": string
 }
 
-function useSafeAuth() {
-  const [authState, setAuthState] = useState<{
-    user: any
-    logout: any
-    isLoading: boolean
-  }>({
-    user: null,
-    logout: null,
-    isLoading: true,
-  })
-
-  const authContext = useAuth()
-
-  useEffect(() => {
-    setAuthState(authContext)
-  }, [authContext])
-
-  return authState
-}
-
 const categoryConfig = {
   All: { icon: Search, color: "bg-blue-500 hover:bg-blue-600" },
   "Lead Builders": { icon: Users, color: "bg-green-500 hover:bg-green-600" },
@@ -67,7 +47,7 @@ const categoryConfig = {
 }
 
 function AITools() {
-  const { user, logout, isLoading } = useSafeAuth()
+  const { user, isLoading, authContext, logout } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
 
@@ -791,4 +771,6 @@ function AITools() {
   )
 }
 
-export default AITools
+export default function SafeAITools() {
+  return <AITools />
+}
