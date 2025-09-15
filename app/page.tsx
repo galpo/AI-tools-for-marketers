@@ -7,9 +7,6 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Chatbot } from "@/components/chatbot"
-import { useAuth } from "@/contexts/auth-context"
-import { AuthModal } from "@/components/auth/auth-modal"
-import { FeedbackForm } from "@/components/feedback/feedback-form"
 import {
   Search,
   Users,
@@ -27,6 +24,8 @@ import {
   User,
   LogOut,
 } from "lucide-react"
+import FeedbackForm from "@/components/feedback-form" // Import FeedbackForm component
+import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
 
 interface Tool {
   "Key Tool": string
@@ -48,18 +47,7 @@ const categoryConfig = {
 }
 
 function AITools() {
-  const { user, logout, isLoading } = useAuth()
-  const [authError, setAuthError] = useState(false)
-  const [authState, setAuthState] = useState<{
-    user: any | null
-    logout: (() => Promise<void>) | null
-    isLoading: boolean
-  }>({
-    user: null,
-    logout: null,
-    isLoading: true,
-  })
-
+  const { user, logout, isLoading } = useAuth() // Use useAuth hook at the top level
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
 
@@ -74,14 +62,6 @@ function AITools() {
   const [currentPage, setCurrentPage] = useState(0)
   const [toolsPerPage] = useState(6)
   const [favorites, setFavorites] = useState<string[]>([])
-
-  useEffect(() => {
-    setAuthState({ user, logout, isLoading })
-    if (!user) {
-      console.log("[v0] Auth context not available, using fallback state")
-      setAuthError(true)
-    }
-  }, [user, logout, isLoading])
 
   useEffect(() => {
     fetchTools()
@@ -445,12 +425,12 @@ function AITools() {
   }
 
   const handleLogout = async () => {
-    if (authState.logout) {
-      await authState.logout()
+    if (logout) {
+      await logout()
     }
   }
 
-  if (authState.isLoading && !authError) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -466,13 +446,13 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
-            <FeedbackForm userEmail={authState.user?.email} userName={authState.user?.name} />
+            <FeedbackForm userEmail={user?.email} userName={user?.name} />
 
-            {authState.user ? (
+            {user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {authState.user.name}</span>
+                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
@@ -786,9 +766,6 @@ function AITools() {
 
         {/* Chatbot Component */}
         <Chatbot tools={tools} />
-
-        {/* Auth Modal */}
-        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} defaultMode={authMode} />
       </div>
     </div>
   )
