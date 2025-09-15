@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { MessageSquare, Star, Trash2, Calendar, User, Mail } from "lucide-react"
+import { MessageSquare, Star, Trash2, Calendar, User, Mail, Download } from "lucide-react"
 
 interface FeedbackItem {
   id: string
@@ -47,6 +47,37 @@ export function AdminDashboard() {
     localStorage.removeItem("feedback")
   }
 
+  const exportToCSV = () => {
+    if (feedback.length === 0) return
+
+    const headers = ["Date", "User Name", "User Email", "Type", "Tool Name", "Rating", "Message", "Source"]
+    const csvContent = [
+      headers.join(","),
+      ...feedback.map((item) =>
+        [
+          `"${formatDate(item.timestamp)}"`,
+          `"${item.userName}"`,
+          `"${item.userEmail}"`,
+          `"${item.type}"`,
+          `"${item.toolName || ""}"`,
+          `"${item.rating || ""}"`,
+          `"${item.message.replace(/"/g, '""')}"`,
+          `"${item.source}"`,
+        ].join(","),
+      ),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `feedback-export-${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case "bug":
@@ -85,6 +116,12 @@ export function AdminDashboard() {
           <p className="text-gray-600">Manage user feedback and suggestions</p>
         </div>
         <div className="flex gap-2">
+          {feedback.length > 0 && (
+            <Button variant="outline" onClick={exportToCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          )}
           <Button variant="outline" onClick={loadFeedback}>
             Refresh
           </Button>
