@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import FeedbackForm from "@/components/feedback-form" // Import FeedbackForm component
 import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
+import { AuthModal } from "@/components/auth/auth-modal" // Import AuthModal component
 
 interface Tool {
   "Key Tool": string
@@ -769,6 +770,9 @@ function AITools() {
         {/* Chatbot Component */}
         <Chatbot tools={tools} />
       </div>
+
+      {/* AuthModal Component */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} defaultMode={authMode} />
     </div>
   )
 }
