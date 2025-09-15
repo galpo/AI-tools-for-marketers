@@ -4,24 +4,6 @@ import { findUserByCredentials } from "@/lib/user-storage"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
-// Mock user database - in production, use a real database
-const users = [
-  {
-    id: "1",
-    email: "demo@example.com",
-    password: "password123", // In production, use hashed passwords
-    name: "Demo User",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    email: "admin@aitools.com",
-    password: "admin123",
-    name: "Admin User",
-    createdAt: new Date().toISOString(),
-  },
-]
-
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
@@ -34,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] Searching for user with credentials")
-    const user = await findUserByCredentials(email, password)
+    const user = findUserByCredentials(email, password)
     console.log("[v0] User found:", user ? "Yes" : "No")
 
     if (!user) {
