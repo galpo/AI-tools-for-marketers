@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Chatbot } from "@/components/chatbot"
 import { useAuth } from "@/contexts/auth-context"
 import { AuthModal } from "@/components/auth/auth-modal"
+import { FeedbackForm } from "@/components/feedback/feedback-form"
 import {
   Search,
   Users,
@@ -286,6 +287,111 @@ function AITools() {
     }
   }
 
+  const generateWorkflowTags = (tool: Tool): string[] => {
+    const tags: string[] = []
+    const useCase = tool["Use Case"].toLowerCase()
+    const comments = tool["Comments"].toLowerCase()
+    const toolName = tool["Key Tool"].toLowerCase()
+
+    // Lead Generation Workflow Tags
+    if (useCase.includes("lead") || useCase.includes("prospecting") || comments.includes("lead")) {
+      tags.push("Lead Generation")
+    }
+
+    // Content Creation Workflow Tags
+    if (
+      useCase.includes("content") ||
+      useCase.includes("writing") ||
+      useCase.includes("blog") ||
+      comments.includes("content")
+    ) {
+      tags.push("Content Creation")
+    }
+
+    // Email Marketing Workflow Tags
+    if (useCase.includes("email") || useCase.includes("newsletter") || comments.includes("email")) {
+      tags.push("Email Marketing")
+    }
+
+    // Social Media Workflow Tags
+    if (
+      useCase.includes("social") ||
+      comments.includes("social") ||
+      comments.includes("linkedin") ||
+      comments.includes("twitter")
+    ) {
+      tags.push("Social Media")
+    }
+
+    // Analytics Workflow Tags
+    if (
+      useCase.includes("analytics") ||
+      useCase.includes("data") ||
+      useCase.includes("tracking") ||
+      comments.includes("analytics")
+    ) {
+      tags.push("Analytics")
+    }
+
+    // Automation Workflow Tags
+    if (
+      useCase.includes("automation") ||
+      useCase.includes("workflow") ||
+      comments.includes("automation") ||
+      toolName.includes("zapier")
+    ) {
+      tags.push("Automation")
+    }
+
+    // CRM Workflow Tags
+    if (useCase.includes("crm") || useCase.includes("customer") || comments.includes("crm")) {
+      tags.push("CRM")
+    }
+
+    // SEO Workflow Tags
+    if (useCase.includes("seo") || comments.includes("seo") || comments.includes("search engine")) {
+      tags.push("SEO")
+    }
+
+    // AI/ML Workflow Tags
+    if (
+      toolName.includes("ai") ||
+      toolName.includes("gpt") ||
+      comments.includes("artificial intelligence") ||
+      comments.includes("machine learning")
+    ) {
+      tags.push("AI/ML")
+    }
+
+    // Design Workflow Tags
+    if (
+      useCase.includes("design") ||
+      comments.includes("design") ||
+      toolName.includes("canva") ||
+      comments.includes("visual")
+    ) {
+      tags.push("Design")
+    }
+
+    return tags.slice(0, 3) // Limit to 3 tags per tool
+  }
+
+  const getWorkflowTagColor = (tag: string): string => {
+    const colors: { [key: string]: string } = {
+      "Lead Generation": "bg-green-100 text-green-700 border-green-200",
+      "Content Creation": "bg-blue-100 text-blue-700 border-blue-200",
+      "Email Marketing": "bg-red-100 text-red-700 border-red-200",
+      "Social Media": "bg-purple-100 text-purple-700 border-purple-200",
+      Analytics: "bg-indigo-100 text-indigo-700 border-indigo-200",
+      Automation: "bg-orange-100 text-orange-700 border-orange-200",
+      CRM: "bg-teal-100 text-teal-700 border-teal-200",
+      SEO: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      "AI/ML": "bg-pink-100 text-pink-700 border-pink-200",
+      Design: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    }
+    return colors[tag] || "bg-gray-100 text-gray-700 border-gray-200"
+  }
+
   const toggleFavorite = (toolName: string) => {
     setFavorites((prev) => (prev.includes(toolName) ? prev.filter((name) => name !== toolName) : [...prev, toolName]))
   }
@@ -339,6 +445,8 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
+            <FeedbackForm userEmail={user?.email} userName={user?.name} />
+
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -440,6 +548,7 @@ function AITools() {
                 .slice(0, 6)
                 .map((tool, index) => {
                   const category = getToolCategory(tool["Use Case"])
+                  const workflowTags = generateWorkflowTags(tool)
                   return (
                     <Card
                       key={`favorite-${index}`}
@@ -473,6 +582,22 @@ function AITools() {
                           </div>
                         </div>
                         <p className="text-sm font-medium text-blue-600 mb-3">{tool["Use Case"]}</p>
+
+                        {/* Workflow Tags */}
+                        {workflowTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {workflowTags.map((tag, tagIndex) => (
+                              <Badge
+                                key={tagIndex}
+                                variant="outline"
+                                className={`text-xs px-2 py-0.5 border ${getWorkflowTagColor(tag)}`}
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
                         <p className="text-sm text-gray-600 mb-4 line-clamp-3">{tool["Comments"]}</p>
                         {tool["Pricing"] && (
                           <div className="mb-3">
@@ -506,6 +631,7 @@ function AITools() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {currentTools.map((tool, index) => {
             const category = getToolCategory(tool["Use Case"])
+            const workflowTags = generateWorkflowTags(tool)
             return (
               <Card
                 key={startIndex + index}
@@ -546,6 +672,21 @@ function AITools() {
 
                   {/* Use case */}
                   <p className="text-sm font-medium text-blue-600 mb-3">{tool["Use Case"]}</p>
+
+                  {/* Workflow Tags */}
+                  {workflowTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {workflowTags.map((tag, tagIndex) => (
+                        <Badge
+                          key={tagIndex}
+                          variant="outline"
+                          className={`text-xs px-2 py-0.5 border ${getWorkflowTagColor(tag)}`}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Description */}
                   <p className="text-sm text-gray-600 mb-4 line-clamp-3">{tool["Comments"]}</p>
