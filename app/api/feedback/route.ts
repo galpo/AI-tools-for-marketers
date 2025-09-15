@@ -92,13 +92,19 @@ export async function POST(request: NextRequest) {
           },
         )
 
+        // Get authenticated user or use anonymous user ID
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        const userId = user?.id || "00000000-0000-0000-0000-000000000000" // Anonymous user UUID
+
         // Map to existing table structure
         const supabaseData = {
           type,
           message,
           rating: rating || null,
           tool_name: toolName || null,
-          user_id: null, // Will be set by RLS if user is authenticated
+          user_id: userId, // Use actual user ID or anonymous UUID
           created_at: new Date().toISOString(),
         }
 
