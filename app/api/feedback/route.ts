@@ -25,10 +25,16 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Prepared feedback data:", feedbackData)
 
-    // Google Sheets integration
     const GOOGLE_SHEETS_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL
-
+    console.log("[v0] Environment check:")
+    console.log("[v0] NODE_ENV:", process.env.NODE_ENV)
+    console.log("[v0] VERCEL_ENV:", process.env.VERCEL_ENV)
     console.log("[v0] Google Sheets URL exists:", !!GOOGLE_SHEETS_URL)
+    console.log("[v0] Google Sheets URL length:", GOOGLE_SHEETS_URL?.length || 0)
+    console.log(
+      "[v0] All env vars starting with GOOGLE:",
+      Object.keys(process.env).filter((key) => key.startsWith("GOOGLE")),
+    )
 
     if (GOOGLE_SHEETS_URL) {
       try {
@@ -42,14 +48,17 @@ export async function POST(request: NextRequest) {
         })
 
         console.log("[v0] Google Sheets response status:", response.status)
+        console.log("[v0] Google Sheets response headers:", Object.fromEntries(response.headers.entries()))
 
         if (!response.ok) {
-          console.error("Failed to send to Google Sheets:", response.statusText)
+          const errorText = await response.text()
+          console.error("[v0] Google Sheets error response:", errorText)
         } else {
-          console.log("[v0] Successfully sent to Google Sheets")
+          const responseText = await response.text()
+          console.log("[v0] Google Sheets success response:", responseText)
         }
       } catch (error) {
-        console.error("Google Sheets integration error:", error)
+        console.error("[v0] Google Sheets integration error:", error)
         // Continue processing even if Google Sheets fails
       }
     } else {
