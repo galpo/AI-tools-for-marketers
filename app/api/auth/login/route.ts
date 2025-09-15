@@ -1,8 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { SignJWT } from "jose"
 import { findUserByCredentials } from "@/lib/user-storage"
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,17 +21,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    console.log("[v0] Creating JWT token for user:", user.id)
-    // Create JWT token
-    const token = await new SignJWT({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("24h")
-      .sign(JWT_SECRET)
+    console.log("[v0] Creating token for user:", user.id)
+    const token = btoa(
+      JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      }),
+    )
 
     console.log("[v0] Login successful for user:", user.email)
     // Return user data and token
