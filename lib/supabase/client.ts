@@ -6,7 +6,16 @@ export function createClient() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Missing Supabase environment variables")
-    throw new Error("Supabase configuration is missing. Please check your environment variables.")
+    // Return a mock client that won't break the app
+    return {
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        signInWithPassword: () => Promise.resolve({ error: { message: "Supabase not configured" } }),
+        signUp: () => Promise.resolve({ error: { message: "Supabase not configured" } }),
+        signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
+    } as any
   }
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
