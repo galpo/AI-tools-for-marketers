@@ -24,8 +24,8 @@ import {
   User,
   LogOut,
 } from "lucide-react"
-import FeedbackForm from "@/components/feedback-form"
-import { useAuth } from "@/contexts/auth-context"
+import FeedbackForm from "@/components/feedback-form" // Import FeedbackForm component
+import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
 
 interface Tool {
   "Key Tool": string
@@ -46,8 +46,10 @@ const categoryConfig = {
   "Other Tools": { icon: Wrench, color: "bg-gray-500 hover:bg-gray-600" },
 }
 
+export const dynamic = "force-dynamic"
+
 function AITools() {
-  const { user, isLoading, authContext, logout } = useAuth()
+  const { user, logout, isLoading } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
 
@@ -62,6 +64,16 @@ function AITools() {
   const [currentPage, setCurrentPage] = useState(0)
   const [toolsPerPage] = useState(6)
   const [favorites, setFavorites] = useState<string[]>([])
+
+  const [authState, setAuthState] = useState<{
+    user: any
+    logout: any
+    isLoading: boolean
+  }>({
+    user: user,
+    logout: logout,
+    isLoading: isLoading,
+  })
 
   useEffect(() => {
     fetchTools()
@@ -425,12 +437,12 @@ function AITools() {
   }
 
   const handleLogout = async () => {
-    if (logout) {
-      await logout()
+    if (authState.logout) {
+      await authState.logout()
     }
   }
 
-  if (isLoading) {
+  if (authState.isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
@@ -446,13 +458,13 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
-            <FeedbackForm userEmail={user?.email} userName={user?.name} />
+            <FeedbackForm userEmail={authState.user?.email} userName={authState.user?.name} />
 
-            {user ? (
+            {authState.user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
+                  <span className="text-sm text-gray-700">Welcome, {authState.user.name}</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
@@ -771,6 +783,4 @@ function AITools() {
   )
 }
 
-export default function SafeAITools() {
-  return <AITools />
-}
+export default AITools

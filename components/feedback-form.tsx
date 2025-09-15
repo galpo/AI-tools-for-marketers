@@ -4,43 +4,44 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { MessageSquare, Star } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { MessageSquare, Star, Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 interface FeedbackFormProps {
+  toolName?: string
   userEmail?: string
   userName?: string
-  toolName?: string
 }
 
-export default function FeedbackForm({ userEmail, userName, toolName }: FeedbackFormProps) {
+export default function FeedbackForm({ toolName, userEmail, userName }: FeedbackFormProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [feedback, setFeedback] = useState("")
-  const [rating, setRating] = useState("")
   const [type, setType] = useState("")
-  const [email, setEmail] = useState(userEmail || "")
-  const [name, setName] = useState(userName || "")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { toast } = useToast()
+  const [message, setMessage] = useState("")
+  const [rating, setRating] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  const { user, isLoading: authLoading } = useAuth()
+
+  const handleFeedbackClick = () => {
+    if (!user) {
+      setShowAuthModal(true)
+    } else {
+      setIsOpen(true)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!feedback.trim() || !type || !rating) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsSubmitting(true)
+    setIsLoading(true)
+    setError("")
 
     try {
       const response = await fetch("/api/feedback", {
@@ -49,175 +50,140 @@ export default function FeedbackForm({ userEmail, userName, toolName }: Feedback
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: feedback,
           type,
-          rating: Number.parseInt(rating),
-          toolName: toolName || "AI Tools for Marketers",
-          userEmail: email,
-          userName: name,
-          source: "AI Tools for Marketers",
+          message,
+          rating: rating > 0 ? rating : null,
+          toolName,
+          userEmail: user?.email || userEmail,
+          userName: user?.name || userName,
         }),
       })
 
-      if (response.ok) {
-        toast({
-          title: "Feedback Submitted!",
-          description: "Thank you for your feedback. We appreciate your input!",
-        })
+      const data = await response.json()
 
-        // Reset form
-        setFeedback("")
-        setRating("")
-        setType("")
-        setIsOpen(false)
+      if (data.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          setIsOpen(false)
+          setSuccess(false)
+          setType("")
+          setMessage("")
+          setRating(0)
+        }, 2000)
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to submit feedback")
+        setError(data.error || "Failed to submit feedback")
       }
     } catch (error) {
-      console.error("Error submitting feedback:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit feedback. Please try again.",
-        variant: "destructive",
-      })
+      setError("Network error. Please try again.")
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Feedback
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Share Your Feedback</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="type">Feedback Type *</Label>
-            <Select value={type} onValueChange={setType} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select feedback type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bug">Bug Report</SelectItem>
-                <SelectItem value="feature">Feature Request</SelectItem>
-                <SelectItem value="improvement">Improvement Suggestion</SelectItem>
-                <SelectItem value="general">General Feedback</SelectItem>
-                <SelectItem value="tool-suggestion">Tool Suggestion</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2 bg-transparent"
+            onClick={handleFeedbackClick}
+            disabled={authLoading}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Feedback
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md bg-white border border-gray-200 shadow-lg">
+          <DialogHeader>
+            <DialogTitle>Send Feedback</DialogTitle>
+          </DialogHeader>
 
-          <div>
-            <Label htmlFor="rating">Rating *</Label>
-            <Select value={rating} onValueChange={setRating} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Rate your experience" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="ml-2">Excellent</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="4">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <span className="ml-2">Good</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="3">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <span className="ml-2">Average</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="2">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <span className="ml-2">Poor</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="1">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <Star className="h-4 w-4 text-gray-300" />
-                    <span className="ml-2">Very Poor</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="feedback">Your Feedback *</Label>
-            <Textarea
-              id="feedback"
-              placeholder="Please share your thoughts, suggestions, or report any issues..."
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              required
-              rows={4}
-            />
-          </div>
-
-          {!userEmail && (
-            <div>
-              <Label htmlFor="email">Email (Optional)</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your.email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+          {success ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Thank you!</h3>
+              <p className="text-gray-600">Your feedback has been submitted successfully.</p>
             </div>
-          )}
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          {!userName && (
-            <div>
-              <Label htmlFor="name">Name (Optional)</Label>
-              <Input id="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-          )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Feedback Type</label>
+                <Select value={type} onValueChange={setType} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select feedback type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bug">Bug Report</SelectItem>
+                    <SelectItem value="feature">Feature Request</SelectItem>
+                    <SelectItem value="tool_review">Tool Review</SelectItem>
+                    <SelectItem value="general">General Feedback</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit Feedback"}
+              {toolName && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tool</label>
+                  <Input value={toolName} disabled />
+                </div>
+              )}
+
+              {type === "tool_review" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Rating</label>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button key={star} type="button" onClick={() => setRating(star)} className="p-1">
+                        <Star
+                          className={`h-6 w-6 ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Message</label>
+                <Textarea
+                  placeholder="Tell us what you think..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={4}
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading || !type || !message}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit Feedback
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Login Required</h3>
+            <p className="text-gray-600 mb-4">Please log in to submit feedback.</p>
+            <Button onClick={() => setShowAuthModal(false)} className="w-full">
+              Close
             </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </>
   )
 }
