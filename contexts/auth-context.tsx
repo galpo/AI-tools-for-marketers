@@ -67,11 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     try {
+      const redirectUrl =
+        process.env.NODE_ENV === "production"
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+          emailRedirectTo: redirectUrl,
           data: {
             name: name,
           },
