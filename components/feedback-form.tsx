@@ -43,6 +43,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
 
     try {
       const feedbackData = {
+        id: Date.now().toString(),
         type,
         message,
         rating,
@@ -52,6 +53,10 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
         source: "AI Tools for Marketers",
         timestamp: new Date().toISOString(),
       }
+
+      const existingFeedback = JSON.parse(localStorage.getItem("feedback") || "[]")
+      existingFeedback.push(feedbackData)
+      localStorage.setItem("feedback", JSON.stringify(existingFeedback))
 
       console.log("Feedback submitted:", feedbackData)
 
@@ -102,7 +107,22 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
             <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Sign In Required</h3>
             <p className="text-gray-600 mb-4">You need to be signed in to submit feedback.</p>
-            <Button onClick={() => setIsOpen(false)}>Close</Button>
+            <div className="space-y-3">
+              <Button onClick={() => setIsOpen(false)}>Close</Button>
+              <div className="text-sm text-gray-500">
+                <span>Need an account? </span>
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    // Trigger the auth modal - we'll need to pass this as a prop
+                    window.dispatchEvent(new CustomEvent("openAuth", { detail: "login" }))
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Sign in here
+                </button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

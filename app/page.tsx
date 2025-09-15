@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Chatbot } from "@/components/chatbot"
+import { AdminDashboard } from "@/components/admin-dashboard"
 import {
   Search,
   Users,
@@ -68,6 +69,14 @@ function AITools() {
 
   useEffect(() => {
     fetchTools()
+
+    const handleOpenAuth = (event: CustomEvent) => {
+      setAuthMode(event.detail)
+      setShowAuthModal(true)
+    }
+
+    window.addEventListener("openAuth", handleOpenAuth as EventListener)
+    return () => window.removeEventListener("openAuth", handleOpenAuth as EventListener)
   }, [])
 
   useEffect(() => {
@@ -476,6 +485,12 @@ function AITools() {
             )}
           </div>
         </div>
+
+        {user?.isAdmin && (
+          <div className="mb-8">
+            <AdminDashboard />
+          </div>
+        )}
 
         {/* Filter Tools Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
