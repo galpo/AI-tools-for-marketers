@@ -60,14 +60,6 @@ function AITools() {
     isLoading: true,
   })
 
-  useEffect(() => {
-    setAuthState({ user, logout, isLoading })
-    if (!user) {
-      console.log("[v0] Auth context not available during SSG, using fallback state")
-      setAuthError(true)
-    }
-  }, [user, logout, isLoading])
-
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
 
@@ -82,6 +74,14 @@ function AITools() {
   const [currentPage, setCurrentPage] = useState(0)
   const [toolsPerPage] = useState(6)
   const [favorites, setFavorites] = useState<string[]>([])
+
+  useEffect(() => {
+    setAuthState({ user, logout, isLoading })
+    if (!user) {
+      console.log("[v0] Auth context not available, using fallback state")
+      setAuthError(true)
+    }
+  }, [user, logout, isLoading])
 
   useEffect(() => {
     fetchTools()
@@ -450,7 +450,7 @@ function AITools() {
     }
   }
 
-  if (loading || (authState.isLoading && !authError)) {
+  if (authState.isLoading && !authError) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">Loading AI tools...</div>
