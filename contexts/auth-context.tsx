@@ -2,11 +2,15 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
-import type { User } from "@supabase/supabase-js"
+
+interface SimpleUser {
+  id: string
+  email: string
+  name: string
+}
 
 interface AuthContextType {
-  user: User | null
+  user: SimpleUser | null
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
@@ -15,43 +19,45 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const TEST_USERS = [
+  { id: "1", email: "test@example.com", password: "password123", name: "Test User" },
+  { id: "2", email: "demo@example.com", password: "demo123", name: "Demo User" },
+  { id: "3", email: "admin@example.com", password: "admin123", name: "Admin User" },
+]
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<SimpleUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setIsLoading(false)
+    const savedUser = localStorage.getItem("auth_user")
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser))
+      } catch (error) {
+        console.error("Error parsing saved user:", error)
+        localStorage.removeItem("auth_user")
+      }
     }
-
-    getSession()
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+    setIsLoading(false)
+  }, [])
 
   const login = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const testUser = TEST_USERS.find((u) => u.email === email && u.password === password)
 
-      if (error) {
-        return { success: false, error: error.message }
+      if (!testUser) {
+        return { success: false, error: "Invalid email or password" }
       }
+
+      const userSession = {
+        id: testUser.id,
+        email: testUser.email,
+        name: testUser.name,
+      }
+
+      setUser(userSession)
+      localStorage.setItem("auth_user", JSON.stringify(userSession))
 
       return { success: true }
     } catch (error) {
@@ -62,20 +68,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      // Check if user already exists
+      const existingUser = TEST_USERS.find((u) => u.email === email)
+      if (existingUser) {
+        return { success: false, error: "User with this email already exists" }
+      }
+
+      // Create new user
+      const newUser = {
+        id: (TEST_USERS.length + 1).toString(),
         email,
         password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
-          data: {
-            name: name,
-          },
-        },
-      })
-
-      if (error) {
-        return { success: false, error: error.message }
+        name,
       }
+
+      TEST_USERS.push(newUser)
+
+      const userSession = {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+      }
+
+      setUser(userSession)
+      localStorage.setItem("auth_user", JSON.stringify(userSession))
 
       return { success: true }
     } catch (error) {
@@ -86,7 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut()
+      setUser(null)
+      localStorage.removeItem("auth_user")
     } catch (error) {
       console.error("Logout failed:", error)
     }

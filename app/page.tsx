@@ -449,13 +449,13 @@ function AITools() {
           <h1 className="text-3xl font-bold text-gray-900">AI Tools for Marketers</h1>
 
           <div className="flex items-center gap-4">
-            <FeedbackForm userEmail={user?.email} userName={user?.user_metadata?.name || user?.email} />
+            <FeedbackForm userEmail={user?.email} userName={user?.name} />
 
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">Welcome, {user.user_metadata?.name || user.email}</span>
+                  <span className="text-sm text-gray-700">Welcome, {user.name}</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
