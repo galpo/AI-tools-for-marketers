@@ -76,7 +76,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ userEmail, userName }) => {
           Feedback
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white">
         <DialogHeader>
           <DialogTitle>Share Your Feedback</DialogTitle>
         </DialogHeader>
