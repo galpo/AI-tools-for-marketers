@@ -53,16 +53,37 @@ export async function POST(request: NextRequest) {
         if (!response.ok) {
           const errorText = await response.text()
           console.error("[v0] Google Sheets error response:", errorText)
+          return NextResponse.json(
+            {
+              error: "Failed to save feedback to Google Sheets. Please check the webhook URL configuration.",
+              details: errorText,
+            },
+            { status: 500 },
+          )
         } else {
           const responseText = await response.text()
           console.log("[v0] Google Sheets success response:", responseText)
         }
       } catch (error) {
         console.error("[v0] Google Sheets integration error:", error)
-        // Continue processing even if Google Sheets fails
+        return NextResponse.json(
+          {
+            error: "Google Sheets integration failed. Please check your webhook configuration.",
+            details: error instanceof Error ? error.message : "Unknown error",
+          },
+          { status: 500 },
+        )
       }
     } else {
       console.log("[v0] No Google Sheets webhook URL configured")
+      return NextResponse.json(
+        {
+          error:
+            "Google Sheets webhook URL is not configured. Please add GOOGLE_SHEETS_WEBHOOK_URL environment variable.",
+          missingEnvVar: "GOOGLE_SHEETS_WEBHOOK_URL",
+        },
+        { status: 500 },
+      )
     }
 
     // Store feedback locally (in production, use a database)
@@ -76,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Feedback submitted successfully",
+      message: "Feedback submitted successfully to Google Sheets",
       id: Date.now().toString(),
     })
   } catch (error) {
