@@ -29,7 +29,7 @@ export async function generateCampaignPlan({ goal, budget, timeline, audience, p
   const { text } = await generateText({
     model: openai("gpt-4o"),
     prompt,
-    maxTokens: 700,
+    maxOutputTokens: 700,
   })
 
   return text

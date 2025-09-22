@@ -25,7 +25,7 @@ export async function generateCopy({ product, audience, tone, copyType }: CopyGe
   const { text } = await generateText({
     model: openai("gpt-4o"),
     prompt,
-    maxTokens: 500,
+    maxOutputTokens: 500,
   })
 
   return text

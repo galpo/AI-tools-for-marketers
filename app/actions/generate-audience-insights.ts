@@ -27,7 +27,7 @@ export async function generateAudienceInsights({ industry, product, currentAudie
   const { text } = await generateText({
     model: openai("gpt-4o"),
     prompt,
-    maxTokens: 600,
+    maxOutputTokens: 600,
   })
 
   return text

@@ -22,7 +22,7 @@ export async function analyzeContent(content: string) {
   const { text } = await generateText({
     model: openai("gpt-4o"),
     prompt,
-    maxTokens: 500,
+    maxOutputTokens: 500,
   })
 
   return text
